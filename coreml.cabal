@@ -21,7 +21,7 @@ library
 executable coreml
     import:           warnings
     main-is:          Main.hs
-    build-depends:    base
+    build-depends:    base, coreml
     hs-source-dirs:   app
     default-language: Haskell2010
     ghc-options:      -Wall
