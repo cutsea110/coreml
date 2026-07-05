@@ -1,15 +1,17 @@
 module TM where
 
--- R: right
--- L: left
-data D = R | L deriving (Show, Eq)
--- B: blank
--- I: 1
--- O: 0
-data S = B | I | O deriving (Show, Eq)
--- M: move
--- H: halt
-data Q = M | H deriving (Show, Eq)
+data D = R -- ^ move right
+       | L -- ^ move left
+       deriving (Show, Eq)
+
+data S = B -- ^ blank
+       | I -- ^ 1
+       | O -- ^ 0
+       deriving (Show, Eq)
+
+data Q = M -- ^ move
+       | H -- ^ halt
+       deriving (Show, Eq)
 
 type Delta = [((Q, S), (Q, S, D))]
 
