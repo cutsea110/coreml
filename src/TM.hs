@@ -21,6 +21,6 @@ type Tape = ([S], S, [S])
 
 p :: Program
 p = (M, [ ((M, I), (M, O, L))
-        , ((M, O), (M, I, L))
+        , ((M, O), (H, I, L))
         , ((M, B), (H, I, L))
         ])
