@@ -27,8 +27,9 @@ move TM.R = moveR
 exec :: TM.Delta -> (TM.Q, TM.Tape) -> TM.Tape
 exec delta (q, tape@(ls, h, rs)) =
   case lookup (q, h) delta of
-    Just (q', h', d) -> exec delta (q', move d (ls, h', rs))
-    Nothing          -> tape
+    Just (q', TM.Write s) -> exec delta (q', (ls, s, rs))
+    Just (q', TM.Move d)  -> exec delta (q', move d (ls, h, rs))
+    Nothing               -> tape
 
 eval :: (TM.Q, TM.Delta) -> TM.Tape -> TM.Tape
 eval (state, delta) tape = exec delta (state, tape)
