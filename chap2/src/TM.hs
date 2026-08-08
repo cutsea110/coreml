@@ -11,6 +11,8 @@ data S = B -- ^ blank
 
 data Q = M -- ^ move
        | H -- ^ halt
+       | PI -- ^ Init
+       | PR -- ^ Scan to Right
        deriving (Show, Eq)
 
 type Delta = [((Q, S), (Q, S, D))]
@@ -20,7 +22,13 @@ type Program = (Q, Delta)
 type Tape = ([S], S, [S])
 
 p :: Program
-p = (M, [ ((M, I), (M, O, L))
-        , ((M, O), (H, I, L))
-        , ((M, B), (H, I, L))
-        ])
+p = (PI, [ ((PI, B), (PR, B, R))
+         , ((PR, O), (PR, O, R))
+         , ((PR, I), (PR, I, R))
+         , ((PR, B), (M, B, L))
+         , ((M, I), (M, O, L))
+         , ((M, O), (H, I, L))
+         , ((M, B), (H, I, L))
+         , ((H, I), (H, I, L))
+         , ((H, O), (H, O, L))
+         ])
