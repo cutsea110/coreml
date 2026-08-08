@@ -1,0 +1,14 @@
+cabal-version:      3.0
+name:               chap3
+version:            0.1.0.0
+build-type:         Simple
+
+common warnings
+    ghc-options: -Wall
+
+executable chap3
+    import:           warnings
+    main-is:          Main.hs
+    build-depends:    base
+    hs-source-dirs:   app
+    default-language: Haskell2010

@@ -1,5 +1,5 @@
 cabal-version:      3.0
-name:               coreml
+name:               chap2
 version:            0.1.0.0
 homepage:           https://github.com/cutsea110/coreml.git
 license:            BSD-3-Clause
@@ -18,10 +18,10 @@ library
     hs-source-dirs:   src
     default-language: Haskell2010
     ghc-options:      -Wall
-executable coreml
+executable chap2
     import:           warnings
     main-is:          Main.hs
-    build-depends:    base, coreml
+    build-depends:    base, chap2
     hs-source-dirs:   app
     default-language: Haskell2010
     ghc-options:      -Wall
