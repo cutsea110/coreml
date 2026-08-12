@@ -9,18 +9,25 @@ data S = B -- ^ blank
        | O -- ^ 0
        deriving (Show, Eq)
 
+data A = Move D
+       | Write S
+       deriving (Show, Eq)
+
 data Q = M -- ^ move
+       | W -- ^ write
        | H -- ^ halt
        deriving (Show, Eq)
 
-type Delta = [((Q, S), (Q, S, D))]
+type Delta = [((Q, S), (Q, A))]
 
 type Program = (Q, Delta)
 
 type Tape = ([S], S, [S])
 
 p :: Program
-p = (M, [ ((M, I), (M, O, L))
-        , ((M, O), (H, I, L))
-        , ((M, B), (H, I, L))
+p = (W, [ ((W, I), (M, Write O))
+        , ((W, O), (H, Write I))
+        , ((W, B), (H, Write I))
+        , ((M, I), (W, Move L))
+        , ((M, O), (W, Move L))
         ])
