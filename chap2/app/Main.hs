@@ -4,10 +4,10 @@ import Eval (eval)
 import TM   (Tape, S(..), addOne, subOne)
 
 t :: Tape
-t = ([O, O, I], O, [])
+t = ([I, I, I], I, [])
 
 r :: Tape
-r = eval subOne t
+r = eval addOne t
 
 main :: IO ()
 main = print $ pair conv (t, r)

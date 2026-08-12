@@ -13,9 +13,7 @@ data A = Move D
        | Write S
        deriving (Show, Eq)
 
-data Q = M -- ^ move
-       | W -- ^ write
-       | H -- ^ halt
+data Q = S Int
        deriving (Show, Eq)
 
 type Delta = [((Q, S), (Q, A))]
@@ -25,17 +23,17 @@ type Program = (Q, Delta)
 type Tape = ([S], S, [S])
 
 addOne :: Program
-addOne = (W, [ ((W, I), (M, Write O))
-             , ((W, O), (H, Write I))
-             , ((W, B), (H, Write I))
-             , ((M, I), (W, Move L))
-             , ((M, O), (W, Move L))
-             ])
+addOne = (S 0, [ ((S 0, I), (S 1, Write O))
+               , ((S 0, O), (S 2, Write I))
+               , ((S 0, B), (S 2, Write I))
+               , ((S 1, I), (S 0, Move L))
+               , ((S 1, O), (S 0, Move L))
+               ])
 
 subOne :: Program
-subOne = (W, [ ((W, I), (H, Write O))
-             , ((W, O), (M, Write I))
-             , ((W, B), (H, Write B))
-             , ((M, I), (W, Move L))
-             , ((M, O), (W, Move L))
-             ])
+subOne = (S 0, [ ((S 0, I), (S 2, Write O))
+               , ((S 0, O), (S 1, Write I))
+               , ((S 0, B), (S 2, Write B))
+               , ((S 1, I), (S 0, Move L))
+               , ((S 1, O), (S 0, Move L))
+               ])
