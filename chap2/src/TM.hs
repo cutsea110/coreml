@@ -31,3 +31,11 @@ addOne = (W, [ ((W, I), (M, Write O))
              , ((M, I), (W, Move L))
              , ((M, O), (W, Move L))
              ])
+
+subOne :: Program
+subOne = (W, [ ((W, I), (H, Write O))
+             , ((W, O), (M, Write I))
+             , ((W, B), (H, Write B))
+             , ((M, I), (W, Move L))
+             , ((M, O), (W, Move L))
+             ])

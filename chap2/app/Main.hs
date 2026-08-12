@@ -1,13 +1,13 @@
 module Main (main) where
 
 import Eval (eval)
-import TM   (Tape, S(..), addOne)
+import TM   (Tape, S(..), addOne, subOne)
 
 t :: Tape
-t = ([I, I, I], I, [])
+t = ([O, O, I], O, [])
 
 r :: Tape
-r = eval addOne t
+r = eval subOne t
 
 main :: IO ()
 main = print $ pair conv (t, r)
