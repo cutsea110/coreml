@@ -10,4 +10,7 @@ r :: Tape
 r = eval p t
 
 main :: IO ()
-main = print (t, r)
+main = print $ pair conv (t, r)
+  where
+    pair f (x, y) = (f x,f y)
+    conv (ls, c, rs) = reverse ls ++ c:rs
