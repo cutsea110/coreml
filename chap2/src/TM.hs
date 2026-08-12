@@ -24,10 +24,10 @@ type Program = (Q, Delta)
 
 type Tape = ([S], S, [S])
 
-p :: Program
-p = (W, [ ((W, I), (M, Write O))
-        , ((W, O), (H, Write I))
-        , ((W, B), (H, Write I))
-        , ((M, I), (W, Move L))
-        , ((M, O), (W, Move L))
-        ])
+addOne :: Program
+addOne = (W, [ ((W, I), (M, Write O))
+             , ((W, O), (H, Write I))
+             , ((W, B), (H, Write I))
+             , ((M, I), (W, Move L))
+             , ((M, O), (W, Move L))
+             ])
