@@ -25,29 +25,32 @@ write s env0 = (env1, code)
                ]
         env1 = next env0
 
--- | eraseR: 1,0 を空白に置き換えながら右へ移動し、空白で停止
+-- | erase: primitive
+erase :: TM.D -> Compiler
+erase d = while (/= TM.B) (write TM.B `compose` move d)
+
+-- | eraseR: 右へ1,0を空白に置き換えながら移動し、空白で停止
 eraseR :: Compiler
-eraseR = while (/= TM.B) (write TM.B `compose` moveR)
+eraseR = erase TM.R
 
--- | eraseL: 1,0 を空白に置き換えながら左へ移動し、空白で停止
 eraseL :: Compiler
-eraseL = while (/= TM.B) (write TM.B `compose` moveL)
+eraseL = erase TM.L
 
--- | moveR: primitives
+-- | move: primitives
+move :: TM.D -> Compiler
+move d env0 = (env1, code)
+  where code = [ ((get env0, symbol), (get env1, TM.Move d))
+               | symbol <- [TM.I, TM.O, TM.B]
+               ]
+        env1 = next env0
+
+-- | moveR: 右へ1つ移動
 moveR :: Compiler
-moveR env0 = (env1, code)
-  where code = [ ((get env0, symbol), (get env1, TM.Move TM.R))
-               | symbol <- [TM.I, TM.O, TM.B]
-               ]
-        env1 = next env0
+moveR = move TM.R
 
--- | moveL: primitives
+-- | moveL: 左へ1つ移動
 moveL :: Compiler
-moveL env0 = (env1, code)
-  where code = [ ((get env0, symbol), (get env1, TM.Move TM.L))
-               | symbol <- [TM.I, TM.O, TM.B]
-               ]
-        env1 = next env0
+moveL = move TM.L
 
 -- | 逐次実行: c1の停止状態にc2を続けて実行する
 compose :: Compiler -> Compiler -> Compiler
