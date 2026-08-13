@@ -11,8 +11,8 @@ tl []    = []
 tl (_:t) = t
 
 cons :: (TM.S, [TM.S]) -> [TM.S]
-cons (TM.B, t) = t
-cons (h,    t) = h:t
+cons (TM.B, []) = []
+cons (h,     t) = h:t
 
 moveL :: TM.Tape -> TM.Tape
 moveL (ls, h, rs) = (tl ls, hd ls, cons (h, rs))
