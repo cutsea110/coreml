@@ -16,6 +16,22 @@ defEnv = Env { state = 0 }
 
 type Compiler = Env -> (Env, TM.Delta)
 
+-- | moveR: primitives
+moveR :: Compiler
+moveR env0 = (env1, code)
+  where code = [ ((get env0, symbol), (get env1, TM.Move TM.R))
+               | symbol <- [TM.I, TM.O, TM.B]
+               ]
+        env1 = next env0
+
+-- | moveL: primitives
+moveL :: Compiler
+moveL env0 = (env1, code)
+  where code = [ ((get env0, symbol), (get env1, TM.Move TM.L))
+               | symbol <- [TM.I, TM.O, TM.B]
+               ]
+        env1 = next env0
+
 -- | コンパイラの合成: c1の停止状態にc2を接続する
 compose :: Compiler -> Compiler -> Compiler
 (c1 `compose` c2) env0 = (env2, code1 ++ code2)
@@ -61,9 +77,9 @@ branch cond c1 c2 branchInitialEnv =
            , symbol <- [TM.I, TM.O, TM.B]
            ]
 
--- | ループ: ヘッドがcondのときcを実行し、それ以外のとき停止する
-while :: S -> Compiler -> Compiler
-while cond body whileInitialEnv =
+-- | ループ: ヘッドが preddicate を満たすとき body を実行し、それ以外のとき停止する
+while :: (S -> Bool) -> Compiler -> Compiler
+while predicate body whileInitialEnv =
   (whileFinalEnv, dispatch ++ bodyCode ++ loop)
   where
     -- whileInitialState で条件を調べ、条件を満たすと本体を実行する。
@@ -80,7 +96,7 @@ while cond body whileInitialEnv =
     whileFinalState = get whileFinalEnv
 
     dispatch = [ ((whileInitialState, symbol),
-                  (if symbol == cond then bodyInitialState else whileFinalState, TM.Nop))
+                  (if predicate symbol then bodyInitialState else whileFinalState, TM.Nop))
                | symbol <- [TM.I, TM.O, TM.B]
                ]
 
@@ -89,48 +105,21 @@ while cond body whileInitialEnv =
            | symbol <- [TM.I, TM.O, TM.B]
            ]
 
+-- | 右へ1をスキップして0,空白で停止
 skip1s :: Compiler
-skip1s env0 = while TM.I p env0
-  where
-    -- while がヘッドの値を確認してから呼び出すので、ここでは右へ
-    -- 一文字移動するだけでよい。
-    p e = (next e, [((s0, TM.I), (s1, TM.Move TM.R))])
-      where
-        s0 = get e
-        s1 = get (next e)
+skip1s = while (== TM.I) moveR
 
+-- | 右へ0をスキップして1,空白で停止
 skip0s :: Compiler
-skip0s env0 = while TM.O p env0
-  where
-    p e = (next e, [((s0, TM.O), (s1, TM.Move TM.R))])
-      where
-        s0 = get e
-        s1 = get (next e)
-
+skip0s = while (== TM.O) moveR
 
 -- | 右へ空白をスキップして1,0で停止
 skipBlank :: Compiler
-skipBlank env0 = (env1, code)
-  where
-    code = [ ((s0, TM.B), (s0, TM.Move TM.R))
-           , ((s0, TM.I), (s1, TM.Nop))
-           , ((s0, TM.O), (s1, TM.Nop))
-           ]
-    s0   = get env0
-    s1   = get env1
-    env1 = next env0
+skipBlank = while (== TM.B) moveR
 
 -- | 右へ1,0の列をスキップして空白で停止
 skipSeq :: Compiler
-skipSeq env0 = (env1, code)
-  where
-    code = [ ((s0, TM.I), (s0, TM.Move TM.R))
-           , ((s0, TM.O), (s0, TM.Move TM.R))
-           , ((s0, TM.B), (s1, TM.Nop))
-           ]
-    s0   = get env0
-    s1   = get env1
-    env1 = next env0
+skipSeq = while (/= TM.B) moveR
 
 -- | 最下位桁にいる状態から1を加える
 add1 :: Compiler
