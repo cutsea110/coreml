@@ -1,7 +1,7 @@
 module Main (main) where
 
 import Eval (eval)
-import TM   (Tape, showTape, S(..), addOne, subOne)
+import TM   (Tape, conv, showTape, S(..), addOne, subOne)
 
 t :: Tape
 t = ([I, I, I], I, [])
