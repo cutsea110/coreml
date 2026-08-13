@@ -52,6 +52,17 @@ moveR = move TM.R
 moveL :: Compiler
 moveL = move TM.L
 
+-- | shiftR: ヘッドが最下位桁にある状態から、その桁を空白にして右シフトする。
+--   数値列の左端は移動しない。
+shiftR :: Compiler
+shiftR = write TM.B
+
+-- | shiftL: ヘッドが最下位桁にある状態から、右隣の空白へ0を書いて左シフトする。
+--   数値列の左端は移動しない。右隣には区切り空白とは別に1セルの
+--   未使用空白が必要である。
+shiftL :: Compiler
+shiftL = moveR `compose` write TM.O
+
 -- | 逐次実行: c1の停止状態にc2を続けて実行する
 compose :: Compiler -> Compiler -> Compiler
 (c1 `compose` c2) env0 = (env2, code1 ++ code2)
@@ -231,6 +242,7 @@ plus' = bin' add1
 minus' :: Compiler
 minus' = bin' sub1
 
+-- | テスト用ユーティリティ
 test :: Compiler -> Tape -> IO ()
 test comp ini = do
   let (_, p) = comp defEnv
