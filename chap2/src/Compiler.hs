@@ -57,11 +57,19 @@ moveL = move TM.L
 shiftR :: Compiler
 shiftR = write TM.B
 
+-- | shiftRs: ヘッドが1,0の最下位桁の状態から各桁を右へn個ずつシフトする
+shiftRs :: Int -> Compiler
+shiftRs n = foldl1 compose (replicate n (shiftR `compose` moveL)) `compose` moveR
+
 -- | shiftL: ヘッドが最下位桁にある状態から、右隣の空白へ0を書いて左シフトする。
 --   数値列の左端は移動しない。右隣には区切り空白とは別に1セルの
 --   未使用空白が必要である。
 shiftL :: Compiler
 shiftL = moveR `compose` write TM.O
+
+-- | shiftLs: ヘッドが1,0の最下位桁の状態から各桁を左へn個ずつシフトする
+shiftLs :: Int -> Compiler
+shiftLs n = foldl1 compose (replicate n shiftL)
 
 -- | 逐次実行: c1の停止状態にc2を続けて実行する
 compose :: Compiler -> Compiler -> Compiler
