@@ -109,7 +109,7 @@ skip0s env0 = while TM.O p env0
 
 
 -- | 右へ空白をスキップして1,0で停止
-skipBlank :: Env -> (Env, TM.Delta)
+skipBlank :: Compiler
 skipBlank env0 = (env1, code)
   where
     code = [ ((s0, TM.B), (s0, TM.Move TM.R))
@@ -121,7 +121,7 @@ skipBlank env0 = (env1, code)
     env1 = next env0
 
 -- | 右へ1,0の列をスキップして空白で停止
-skipSeq :: Env -> (Env, TM.Delta)
+skipSeq :: Compiler
 skipSeq env0 = (env1, code)
   where
     code = [ ((s0, TM.I), (s0, TM.Move TM.R))
