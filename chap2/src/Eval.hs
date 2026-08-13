@@ -29,6 +29,7 @@ exec delta (q, tape@(ls, h, rs)) =
   case lookup (q, h) delta of
     Just (q', TM.Write s) -> exec delta (q', (ls, s, rs))
     Just (q', TM.Move d)  -> exec delta (q', move d (ls, h, rs))
+    Just (q', TM.Nop)     -> exec delta (q', tape)
     Nothing               -> tape
 
 eval :: (TM.Q, TM.Delta) -> TM.Tape -> TM.Tape

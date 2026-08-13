@@ -9,8 +9,14 @@ data S = B -- ^ blank
        | O -- ^ 0
        deriving (Show, Eq)
 
+charS :: S -> Char
+charS B = '_'
+charS I = '1'
+charS O = '0'
+
 data A = Move D
        | Write S
+       | Nop
        deriving (Show, Eq)
 
 data Q = S Int
@@ -21,6 +27,13 @@ type Delta = [((Q, S), (Q, A))]
 type Program = (Q, Delta)
 
 type Tape = ([S], S, [S])
+conv :: Tape -> [S]
+conv (ls, h, rs) = reverse ls ++ h:rs
+showTape :: Tape -> [String]
+showTape (ls, h, rs) = [map charS tape, replicate idx ' ' ++ "^"]
+  where
+    idx = length ls
+    tape = reverse ls ++ [h] ++ rs
 
 addOne :: Program
 addOne = (S 0, [ ((S 0, I), (S 1, Write O))
