@@ -106,20 +106,36 @@ while predicate body whileInitialEnv =
            ]
 
 -- | 右へ1をスキップして0,空白で停止
-skip1s :: Compiler
-skip1s = while (== TM.I) moveR
+skip1sR :: Compiler
+skip1sR = while (== TM.I) moveR
+
+-- | 左へ1をスキップして0,空白で停止
+skip1sL :: Compiler
+skip1sL = while (== TM.I) moveL
 
 -- | 右へ0をスキップして1,空白で停止
-skip0s :: Compiler
-skip0s = while (== TM.O) moveR
+skip0sR :: Compiler
+skip0sR = while (== TM.O) moveR
+
+-- | 左へ0をスキップして1,空白で停止
+skip0sL :: Compiler
+skip0sL = while (== TM.O) moveL
 
 -- | 右へ空白をスキップして1,0で停止
-skipBlank :: Compiler
-skipBlank = while (== TM.B) moveR
+skipBlankR :: Compiler
+skipBlankR = while (== TM.B) moveR
+
+-- | 左へ空白をスキップして1,0で停止
+skipBlankL :: Compiler
+skipBlankL = while (== TM.B) moveL
 
 -- | 右へ1,0の列をスキップして空白で停止
-skipSeq :: Compiler
-skipSeq = while (/= TM.B) moveR
+skipSeqR :: Compiler
+skipSeqR = while (/= TM.B) moveR
+
+-- | 左へ1,0の列をスキップして空白で停止
+skipSeqL :: Compiler
+skipSeqL = while (/= TM.B) moveL
 
 -- | 最下位桁にいる状態から1を加える
 add1 :: Compiler
