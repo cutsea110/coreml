@@ -170,13 +170,19 @@ sub1 env0 = (env2, code)
     env2 = next env1
 
 -- | x y と2つの列が空白で区切られている状態で y の最下位桁にいる状態から、x+yを計算して x+y 0 の列を作る
-plus :: Compiler
-plus = skip0sL `compose` while (/= TM.B) body
+binOp :: Compiler -> Compiler
+binOp op = skip0sL `compose` while (/= TM.B) body
   where
     body = skipSeqR `compose` moveL `compose` step1 `compose` skip0sL
     sub1L = sub1 `compose` skipSeqL
     back  = skipSeqR `compose` skipBlankR `compose` skipSeqR `compose` moveL
-    step1 = sub1L `compose` skipBlankL `compose` add1 `compose` back
+    step1 = sub1L `compose` skipBlankL `compose` op `compose` back
+
+plus :: Compiler
+plus = binOp add1
+
+minus :: Compiler
+minus = binOp sub1
 
 test :: Compiler -> Tape -> IO ()
 test comp ini = do
