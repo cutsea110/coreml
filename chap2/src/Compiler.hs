@@ -16,6 +16,23 @@ defEnv = Env { state = 0 }
 
 type Compiler = Env -> (Env, TM.Delta)
 
+
+-- | write: primitives
+write :: TM.S -> Compiler
+write s env0 = (env1, code)
+  where code = [ ((get env0, symbol), (get env1, TM.Write s))
+               | symbol <- [TM.I, TM.O, TM.B]
+               ]
+        env1 = next env0
+
+-- | eraseR: 1,0 を空白に置き換えながら右へ移動し、空白で停止
+eraseR :: Compiler
+eraseR = while (/= TM.B) (write TM.B `compose` moveR)
+
+-- | eraseL: 1,0 を空白に置き換えながら左へ移動し、空白で停止
+eraseL :: Compiler
+eraseL = while (/= TM.B) (write TM.B `compose` moveL)
+
 -- | moveR: primitives
 moveR :: Compiler
 moveR env0 = (env1, code)
@@ -169,20 +186,47 @@ sub1 env0 = (env2, code)
     env1 = next env0
     env2 = next env1
 
--- | x y と2つの列が空白で区切られている状態で y の最下位桁にいる状態から、x+yを計算して x+y 0 の列を作る
-binOp :: Compiler -> Compiler
-binOp op = skip0sL `compose` while (/= TM.B) body
+-- | 非破壊的二項演算 (桁数指定) : 2引数目を破壊しないが保存領域確保のために適切な桁数を指定する必要がある
+--   x y と2つの列が空白で区切られている状態で y の最下位桁にいる状態から、x + y を計算する
+--   x y の列が最終的に x `op` y な2進数列と y の列になる (y が保存される)
+bin :: Int -> Compiler -> Compiler
+bin digit op = initBackup `compose` backHome `compose` skip0sL `compose` while (/= TM.B) step `compose` recover
   where
-    body = skipSeqR `compose` moveL `compose` step1 `compose` skip0sL
+    initBackup = foldl1 compose (replicate (digit+1) moveR ++ [write TM.O])
+    backHome   = foldl1 compose [skipSeqL, skipBlankL]
+    step       = foldl1 compose [ skipSeqR, moveL
+                                , sub1, skipSeqL, skipBlankL, op
+                                , skipSeqR, skipBlankR, skipSeqR, skipBlankR, skipSeqR, moveL, add1
+                                , skipSeqL, skipBlankL, skip0sL
+                                ]
+    recover    = foldl1 compose [moveR, skipSeqR, skipBlankR, skipSeqR, moveL, plus', moveR, eraseR, skipBlankL]
+
+-- | 非破壊加算
+plus :: Int -> Compiler
+plus digit = bin digit add1
+
+-- | 非破壊的減算
+minus :: Int -> Compiler
+minus digit = bin digit sub1
+
+-- | 破壊的二項演算 (2引数目を0に破壊します)
+--   x y と2つの列が空白で区切られている状態で y の最下位桁にいる状態から、x + y を計算する
+--   x y の列が最終的に x `op` y な2進数列と 00.. の列になる
+bin' :: Compiler -> Compiler
+bin' op = skip0sL `compose` while (/= TM.B) body
+  where
+    body = foldl1 compose [skipSeqR, moveL, step1, skip0sL]
     sub1L = sub1 `compose` skipSeqL
-    back  = skipSeqR `compose` skipBlankR `compose` skipSeqR `compose` moveL
-    step1 = sub1L `compose` skipBlankL `compose` op `compose` back
+    back  = foldl1 compose [skipSeqR, skipBlankR, skipSeqR, moveL]
+    step1 = foldl1 compose [sub1L, skipBlankL, op, back]
 
-plus :: Compiler
-plus = binOp add1
+-- | 破壊的加算
+plus' :: Compiler
+plus' = bin' add1
 
-minus :: Compiler
-minus = binOp sub1
+-- | 破壊的減算
+minus' :: Compiler
+minus' = bin' sub1
 
 test :: Compiler -> Tape -> IO ()
 test comp ini = do
