@@ -32,7 +32,7 @@ moveL env0 = (env1, code)
                ]
         env1 = next env0
 
--- | コンパイラの合成: c1の停止状態にc2を接続する
+-- | 逐次実行: c1の停止状態にc2を続けて実行する
 compose :: Compiler -> Compiler -> Compiler
 (c1 `compose` c2) env0 = (env2, code1 ++ code2)
   where
