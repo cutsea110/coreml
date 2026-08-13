@@ -39,9 +39,9 @@ compose :: Compiler -> Compiler -> Compiler
     (env1, code1) = c1 env0
     (env2, code2) = c2 env1
 
--- | 条件分岐: ヘッドがcondのときc1を、それ以外のときc2を実行する
-branch :: S -> Compiler -> Compiler -> Compiler
-branch cond c1 c2 branchInitialEnv =
+-- | 条件分岐: ヘッドがcondを満たすときc1を、それ以外のときc2を実行する
+branch :: (S -> Bool) -> Compiler -> Compiler -> Compiler
+branch predicate c1 c2 branchInitialEnv =
   (joinEnv, dispatch ++ c1Code ++ c2Code ++ join)
   where
     -- branchInitialState で条件を調べ、c1 または c2 の開始状態へ進む。
@@ -65,7 +65,7 @@ branch cond c1 c2 branchInitialEnv =
     joinState = get joinEnv
 
     dispatch = [ ((branchInitialState, symbol),
-                  (if symbol == cond then c1InitialState else c2InitialState, TM.Nop))
+                  (if predicate symbol then c1InitialState else c2InitialState, TM.Nop))
                | symbol <- [TM.I, TM.O, TM.B]
                ]
 
@@ -169,11 +169,9 @@ sub1 env0 = (env2, code)
     env1 = next env0
     env2 = next env1
 
-
 -- | x y と2つの列が空白で区切られている状態で y の最下位桁にいる状態から、x+yを計算して x+y 0 の列を作る
 plus :: Compiler
 plus = undefined
-
 
 test :: Compiler -> Tape -> IO ()
 test comp ini = do
