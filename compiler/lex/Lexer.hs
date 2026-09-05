@@ -1,7 +1,10 @@
 module Lexer where
 
 import Data.Char (isAlpha, isAlphaNum, isDigit)
-import System.IO (Handle, hIsEOF)
+import Data.IORef (newIORef, readIORef, writeIORef)
+import System.Directory (getTemporaryDirectory, removeFile)
+import System.IO (Handle, SeekMode(AbsoluteSeek), hFlush, hGetContents,
+                   hPutStr, hSeek, openTempFile)
 
 import Parser
 import Token
@@ -9,6 +12,19 @@ import Prelude hiding (exp)
 
 _runTest :: Parser a -> String -> [(a, Stream)]
 _runTest p text = runParser p $ toStream text
+
+-- | Build a 'Handle' whose contents are the given 'String', for use in
+-- doctests that need a real file handle. The backing temp file is unlinked
+-- immediately after creation; the handle stays valid until it is closed.
+_stringHandle :: String -> IO Handle
+_stringHandle s = do
+  dir <- getTemporaryDirectory
+  (path, h) <- openTempFile dir "lexer-doctest.txt"
+  hPutStr h s
+  hFlush h
+  hSeek h AbsoluteSeek 0
+  removeFile path
+  return h
 
 {-|
 >>> _runTest alpha "abc"
@@ -208,3 +224,31 @@ lexer = do
         (REAL . read <$> real) `pAltL`
         (ID <$> ident) `pAltL`
         (SPECIAL <$> pSat (const True))
+
+{-|
+>>> h <- _stringHandle "abc 6.02e23 \"hi\""
+>>> next <- makeLexer h
+>>> next
+ID "abc"
+>>> next
+REAL 6.02e23
+>>> next
+STRING "hi"
+>>> next
+EOF
+>>> next
+EOF
+-}
+-- | makeLexer takes a file handle and returns a stateful action that yields
+-- the next Token on each call, threading the remaining Stream through an
+-- IORef so the handle's contents are consumed one token at a time.
+makeLexer :: Handle -> IO (IO Token)
+makeLexer h = do
+  ref <- newIORef . toStream =<< hGetContents h
+  return $ do
+    stream <- readIORef ref
+    case runParser lexer stream of
+      (tok, rest):_ -> do
+        writeIORef ref rest
+        return tok
+      [] -> error "Lexer.makeLexer: lexer failed to produce a token"

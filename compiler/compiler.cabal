@@ -10,11 +10,11 @@ library
     exposed-modules:  Token
                       Lexer
                       Parser
-    build-depends:    base, containers
+    build-depends:    base, containers, directory
     hs-source-dirs:   lex
     default-language: GHC2024
     ghc-options:      -Wall
-executable cmlc
+executable coremlc
     import:           warnings
     main-is:          Main.hs
     other-modules:    Top
@@ -26,6 +26,6 @@ test-suite doctest
     import:           warnings
     type:             exitcode-stdio-1.0
     main-is:          Doctest.hs
-    build-depends:    base ^>=4.22.0.0, doctest
+    build-depends:    base ^>=4.22.0.0, doctest, directory
     hs-source-dirs:   test
     default-language: GHC2024
