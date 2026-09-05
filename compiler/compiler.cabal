@@ -7,13 +7,12 @@ common warnings
     ghc-options: -Wall
 
 library
-    exposed-modules:  CoreMLLex
-                      Token
+    exposed-modules:  Token
                       Lexer
                       Parser
     build-depends:    base, containers
     hs-source-dirs:   lex
-    default-language: Haskell2010
+    default-language: GHC2024
     ghc-options:      -Wall
 executable cmlc
     import:           warnings
@@ -21,4 +20,12 @@ executable cmlc
     other-modules:    Top
     build-depends:    base, compiler
     hs-source-dirs:   main
-    default-language: Haskell2010
+    default-language: GHC2024
+
+test-suite doctest
+    import:           warnings
+    type:             exitcode-stdio-1.0
+    main-is:          Doctest.hs
+    build-depends:    base ^>=4.22.0.0, doctest
+    hs-source-dirs:   test
+    default-language: GHC2024

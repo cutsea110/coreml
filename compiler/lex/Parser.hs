@@ -1,19 +1,8 @@
 module Parser where
 
-import Data.Char (isDigit)
-
 type Location = Int
-type Token = (Location, String)
-newtype Parser a = Parser { runParser :: [Token] -> [(a, [Token])]}
-
-pSat :: (String -> Bool) -> Parser String
-pSat p = Parser f
-  where
-    f [] = []
-    f ((_, tok):toks) = [(tok, toks) | p tok]
-
-pLit :: String -> Parser String
-pLit s = pSat (== s)
+type Stream = [(Location, Char)]
+newtype Parser a = Parser { runParser :: Stream -> [(a, Stream)] }
 
 pEmpty :: a -> Parser a
 pEmpty x = Parser (\toks -> [(x, toks)])
@@ -28,8 +17,6 @@ pApply :: (a -> b) -> Parser a -> Parser b
 f `pApply` p = Parser (\toks -> [ (f x, toks')
                                 | (x, toks') <- runParser p toks
                                 ])
-pNum :: Parser Int
-pNum = read `pApply` pSat (all isDigit)
 
 pAlt :: Parser a -> Parser a -> Parser a
 p `pAlt` q = Parser (\toks -> runParser p toks ++ runParser q toks)
@@ -39,7 +26,6 @@ p `pAltL` q = Parser (\toks -> runParser p toks <+ runParser q toks)
   where
     [] <+ ys = ys
     xs <+ _  = xs
-
 
 pAp :: Parser (a -> b) -> Parser a -> Parser b
 pf `pAp` px = Parser (\toks -> [ (f v, toks'')
@@ -71,6 +57,9 @@ pOneOrMoreWithSep sep p = pApply2 (:) p (pZeroOrMore (sep *> p))
 pMunch1WithSep :: Parser sep -> Parser a -> Parser [a]
 pMunch1WithSep sep p = pApply2 (:) p (pMunch (sep *> p))
 
+pBracket :: Parser open -> Parser close -> Parser a -> Parser a
+pBracket open close p = open *> p <* close
+
 instance Functor Parser where
   fmap = pApply
 
@@ -81,3 +70,27 @@ instance Applicative Parser where
 instance Monad Parser where
   return = pure
   (>>=) = pBind
+
+toStream :: String -> Stream
+toStream = zip [0..]
+
+pSat :: (Char -> Bool)-> Parser Char
+pSat p = Parser f
+  where
+    f [] = []
+    f ((_, c):toks)
+      | p c = [(c, toks)]
+      | otherwise = []
+
+pChar :: Char -> Parser Char
+pChar c = pSat (==c)
+
+pLit :: String -> Parser String
+pLit []     = Parser (\toks -> [([], toks)])
+pLit (c:cs) = pSat (==c) `pBind` \_ -> pLit cs `pBind` \_ -> pEmpty (c:cs)
+
+pEof :: Parser ()
+pEof = Parser f
+  where
+    f [] = [((), [])]
+    f _  = []
