@@ -1,4 +1,4 @@
 packages:
   ./chap2
   ./chap3
-
+  ./compiler
