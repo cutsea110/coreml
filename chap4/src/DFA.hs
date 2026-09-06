@@ -21,8 +21,7 @@ data NFA = NFA { q     :: [Q]
                , delta :: Delta
                , q0    :: Q
                , f     :: [Q]
-               }
-         deriving (Show, Eq)
+               } deriving (Show, Eq)
 
 type State = [Q]
 
@@ -33,8 +32,7 @@ data DFA = DFA { q     :: [State]
                , delta :: Delta'
                , q0    :: State
                , f     :: [State]
-               }
-         deriving (Show, Eq)
+               } deriving (Show, Eq)
 
 {-|
 >>> d = [(0, (epsilon, [1])), (1, ("a", [1])), (1, ("b", [2])), (2, ("a", [2]))]
@@ -120,10 +118,7 @@ epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
 -}
 delta' :: Delta -> (Q, S) -> State
 delta' d (p, "") = epsilonCl d [p]
-delta' d (p, wa) = epsilonCl d $ flatten [ qs
-                                         | q <- delta' d (p, w)
-                                         , qs <- transitions d (q, a)
-                                         ]
+delta' d (p, wa) = epsilonCl d $ flatten [qs | q <- delta' d (p, w), qs <- transitions d (q, a)]
   where w = init wa
         a = last wa:[]
 
@@ -151,11 +146,7 @@ delta' d (p, wa) = epsilonCl d $ flatten [ qs
 []
 -}
 transitions :: Delta -> (Q, S) -> [State]
-transitions d (p, a)
-  = [ qs'
-    | (p', (symbol, qs')) <- d
-    , p' == p && symbol == a
-    ]
+transitions d (p, a) = [qs' | (p', (symbol, qs')) <- d, p' == p && symbol == a]
 
 {-|
 - r = 空のとき L(Nr) = []
@@ -201,10 +192,7 @@ True
 -}
 lang :: NFA -> [S]
 lang (NFA { q = _qs, s = ws, delta = d, q0 = q0, f = fs })
-  = [ w
-    | w <- ws
-    , any (`elem` fs) (delta' d (q0, w))
-    ]
+  = [w | w <- ws, any (`elem` fs) (delta' d (q0, w))]
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
@@ -288,7 +276,7 @@ closureNFA
 closureNFA _ _ = error "closureNFA: f must be a singleton list"
 
 deltaDFA :: Delta -> (State, S) -> State
-deltaDFA d (ps, a) = flatten [ delta' d (p, a) | p <- ps]
+deltaDFA d (ps, a) = flatten [delta' d (p, a) | p <- ps]
 
 addS :: NFA -> (State, S) -> ([State], [State], [(S, State)]) -> ([State], [(S, State)])
 addS NFA { delta = d } (a, s) (q1, q2, omega) = (q1', [(s, a')] ++ omega)
