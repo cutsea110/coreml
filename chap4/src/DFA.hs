@@ -128,6 +128,29 @@ delta' d (p, wa) = epsilonCl d $ flatten [ qs
         a = last wa:[]
         flatten = nub . concat
 
+{-|
+>>> d = [(0, ("a", [1])), (1, ("b", [2])), (2, ("c", [3])), (3, ("d", [4]))]
+>>> transitions d (0, "a")
+[[1]]
+>>> transitions d (1, "b")
+[[2]]
+
+>>> d = [(0, ("a", [1,2])), (1, ("b", [3])), (1, ("c", [4]))]
+>>> transitions d (0, "a")
+[[1,2]]
+>>> transitions d (1, "b")
+[[3]]
+>>> transitions d (1, "c")
+[[4]]
+>>> transitions d (3, "a")
+[]
+>>> transitions d (4, "b")
+[]
+>>> transitions d (3, epsilon)
+[]
+>>> transitions d (4, epsilon)
+[]
+-}
 transitions :: Delta -> (Q, S) -> [State]
 transitions d (p, a)
   = [ qs'
