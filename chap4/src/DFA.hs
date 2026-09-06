@@ -32,6 +32,9 @@ data DFA = DFA { q     :: [State]
                }
          deriving (Show, Eq)
 
+flatten :: Eq a => [[a]] -> [a]
+flatten = nub . concat
+
 {-|
 >>> d = [(0, (epsilon, [1])), (1, ("a", [1])), (1, ("b", [2])), (2, ("a", [2]))]
 >>> epsilonCl d [0]
@@ -52,17 +55,13 @@ data DFA = DFA { q     :: [State]
 [4,5]
 -}
 epsilonCl :: Delta -> State -> State
-epsilonCl d ps
-  = flatten [ epsilonTransition p
-            | p <- ps
-            ]
-  where flatten = nub . concat
-        epsilonTransition p = go [p]
+epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
+  where epsilonTransition p = go [p]
           where
             go qs
               | qs == qs' = qs
               | otherwise = go qs'
-              where qs' = nub (qs ++ flatten [ q' | q <- qs, q' <- transitions d (q, epsilon) ])
+              where qs' = flatten $ qs:[q' | q <- qs, q' <- transitions d (q, epsilon)]
 
 {-|
 
@@ -126,7 +125,6 @@ delta' d (p, wa) = epsilonCl d $ flatten [ qs
                                          ]
   where w = init wa
         a = last wa:[]
-        flatten = nub . concat
 
 {-|
 >>> d = [(0, ("a", [1])), (1, ("b", [2])), (2, ("c", [3])), (3, ("d", [4]))]
@@ -289,7 +287,7 @@ closureNFA
 closureNFA _ _ = error "closureNFA: f must be a singleton list"
 
 deltaDFA :: Delta -> (State, S) -> State
-deltaDFA d (ps, a) = nub $ concat [ delta' d (p, a) | p <- ps]
+deltaDFA d (ps, a) = flatten [ delta' d (p, a) | p <- ps]
 
 addS :: NFA -> (State, S) -> ([State], [State], [(S, State)]) -> ([State], [(S, State)])
 addS NFA { delta = d } (a, s) (q1, q2, omega) = (q1', [(s, a')] ++ omega)
