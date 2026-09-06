@@ -232,6 +232,7 @@ concatNFA (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] })
         }
   where p  = maximum (qs1 ++ qs2) + 1
         qf = p + 1
+concatNFA _ _ _ = error "concatNFA: f must be a singleton list"    
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
@@ -258,6 +259,7 @@ choiceNFA (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] })
         }
   where p  = maximum (qs1 ++ qs2) + 1
         qf = p + 1
+choiceNFA _ _ _ = error "choiceNFA: f must be a singleton list"
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]) から
@@ -280,6 +282,7 @@ closureNFA (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] }) ws
         }
   where p  = maximum qs1 + 1
         qf = p + 1
+closureNFA _ _ = error "closureNFA: f must be a singleton list"
 
 deltaDFA :: Delta -> (State, S) -> State
 deltaDFA d (ps, a) = nub $ concat [ delta' d (p, a) | p <- ps]
