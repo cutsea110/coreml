@@ -51,9 +51,11 @@ epsilonCl :: Delta -> [Q] -> [Q]
 epsilonCl d ps
   = flatten [ qs
             | p <- ps
-            , qs <- [ qs'
-                    | (p', (symbol, qs')) <- d
-                    , p' == p && symbol == epsilon
-                    ]
+            , qs <- transitions p
             ]
   where flatten = nub . concat
+        -- epsilon transitions from a state p
+        transitions p = [ qs'
+                        | (p', (symbol, qs')) <- d
+                        , p' == p && symbol == epsilon
+                        ]
