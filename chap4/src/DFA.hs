@@ -3,6 +3,10 @@ module DFA where
 
 import Data.List (nub)
 
+-- utility
+flatten :: Eq a => [[a]] -> [a]
+flatten = nub . concat
+
 type S = String
 
 epsilon :: S
@@ -31,9 +35,6 @@ data DFA = DFA { q     :: [State]
                , f     :: [State]
                }
          deriving (Show, Eq)
-
-flatten :: Eq a => [[a]] -> [a]
-flatten = nub . concat
 
 {-|
 >>> d = [(0, (epsilon, [1])), (1, ("a", [1])), (1, ("b", [2])), (2, ("a", [2]))]
