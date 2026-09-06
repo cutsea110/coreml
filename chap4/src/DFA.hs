@@ -3,7 +3,7 @@ module DFA where
 
 import Data.List (nub)
 
--- utility
+-- ユーティリティ
 flatten :: Eq a => [[a]] -> [a]
 flatten = nub . concat
 
@@ -66,7 +66,7 @@ epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
 
 {-|
 
-単純なケース
+- 単純なケース
 
 >>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4]))]
 >>> delta' d (0, "a")
@@ -84,13 +84,13 @@ epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
 >>> delta' d (0, "abab")
 [4]
 
-連接
+- 連接
 
 >>> d = [(0, (epsilon, [1])), (1, ("a", [2])), (2, (epsilon, [3])), (3, ("b", [4])), (4, (epsilon, [5]))]
 >>> delta' d (0, "ab")
 [4,5]
 
-連接 (r1r2)
+- 連接 (r1r2)
 
 >>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4])), (3, ("b", [5])), (4, ("a", [5]))]
 >>> delta' d (0, "ab")
@@ -98,7 +98,7 @@ epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
 >>> delta' d (0, "ba")
 [5]
 
-選択 (r1|r2)
+- 選択 (r1|r2)
 
 >>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4])), (3, (epsilon, [5])), (4, (epsilon, [5]))]
 >>> delta' d (0, "a")
@@ -106,7 +106,7 @@ epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
 >>> delta' d (0, "b")
 [4,5]
 
-閉包 (r*)
+- 閉包 (r*)
 
 >>> d = [(0, (epsilon, [1,3])), (1, ("a", [2])), (2, (epsilon, [3])), (2, (epsilon, [1]))]
 >>> delta' d (0, "a")
@@ -322,8 +322,8 @@ DFA {q = [[3,5],[],[4,5],[0,1,2]], s = ["a","b"], delta = [([3,5],[("b",[]),("a"
 DFA {q = [[4],[3],[2],[1],[],[0]], s = ["a","b"], delta = [([4],[("b",[]),("a",[])]),([3],[("b",[4]),("a",[])]),([2],[("b",[]),("a",[3])]),([1],[("b",[2]),("a",[])]),([],[("b",[]),("a",[])]),([0],[("b",[]),("a",[1])])], q0 = [0], f = [[4]]}
 
 閉包 (a*) : closureNFA が受理状態から開始状態へεで戻す辺を持つため、
-NFA自体が循環パターンになっている。その結果DFA側の遷移表にも
-状態 [1,0,3] が "a" を読んで自分自身に戻る自己ループが現れる。
+NFA自体が循環パターンになっている。
+その結果DFA側の遷移表にも状態 [1,0,3] が "a" を読んで自分自身に戻る自己ループが現れる。
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
 >>> nStar = closureNFA n1 ["a"]
