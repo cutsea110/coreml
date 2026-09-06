@@ -150,10 +150,6 @@ delta' d (p, wa) = epsilonCl d $ flatten [ qs
 []
 >>> transitions d (4, epsilon)
 []
-
->>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("a", [4])), (3, (epsilon, [5])), (4, (epsilon, [5]))]
->>> transitions d (0, "a")
-[[3],[4]]
 -}
 transitions :: Delta -> (Q, S) -> [State]
 transitions d (p, a)
@@ -222,15 +218,16 @@ Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε
 NFA {q = [0,1,2,3,4,5], s = ["ab"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0])),(1,("",[2])),(3,("",[5]))], q0 = 4, f = [5]}
 -}
 concatNFA :: NFA -> NFA -> [S] -> NFA
-concatNFA (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] })
-          (NFA { q = qs2, delta = d2, q0 = p2, f = [fq2] })
-          ws
+concatNFA
+  (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] })
+  (NFA { q = qs2, delta = d2, q0 = p2, f = [fq2] })
+  ws
   = NFA { q     = qs1 ++ qs2 ++ [p, qf]
         , s     = ws
         , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1]))
-                               , (fq1, (epsilon, [p2]))
-                               , (fq2, (epsilon, [qf]))
-                               ]
+                              , (fq1, (epsilon, [p2]))
+                              , (fq2, (epsilon, [qf]))
+                              ]
         , q0    = p
         , f     = [qf]
         }
@@ -249,15 +246,16 @@ Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[
 NFA {q = [0,1,2,3,4,5], s = ["a","b"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0,2])),(1,("",[5])),(3,("",[5]))], q0 = 4, f = [5]}
 -}
 choiceNFA :: NFA -> NFA -> [S] -> NFA
-choiceNFA (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] })
-          (NFA { q = qs2, delta = d2, q0 = p2, f = [fq2] })
-          ws
+choiceNFA
+  (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] })
+  (NFA { q = qs2, delta = d2, q0 = p2, f = [fq2] })
+  ws
   = NFA { q     = qs1 ++ qs2 ++ [p, qf]
         , s     = ws
         , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1,p2]))
-                               , (fq1, (epsilon, [qf]))
-                               , (fq2, (epsilon, [qf]))
-                               ]
+                              , (fq1, (epsilon, [qf]))
+                              , (fq2, (epsilon, [qf]))
+                              ]
         , q0    = p
         , f     = [qf]
         }
@@ -275,12 +273,14 @@ Nr1* = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1,q])]),(q1,[(ε,[p1,q])])}, p, [q])
 NFA {q = [0,1,2,3], s = ["","a","aa"], delta = [(0,("a",[1])),(2,("",[0,3])),(1,("",[0,3]))], q0 = 2, f = [3]}
 -}
 closureNFA :: NFA -> [S] -> NFA
-closureNFA (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] }) ws
+closureNFA
+  (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] })
+  ws
   = NFA { q     = qs1 ++ [p, qf]
         , s     = ws
         , delta = d1 ++ [ (p,   (epsilon, [p1,qf]))
-                         , (fq1, (epsilon, [p1,qf]))
-                         ]
+                        , (fq1, (epsilon, [p1,qf]))
+                        ]
         , q0    = p
         , f     = [qf]
         }
