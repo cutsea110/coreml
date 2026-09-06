@@ -7,5 +7,5 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    []  -> Top.topWithStdIn
-    f:_ -> Top.top f
+    []  -> topWithStdIn
+    f:_ -> top f

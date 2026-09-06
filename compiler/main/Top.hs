@@ -4,17 +4,17 @@ module Top
   ) where
 
 import System.IO (IOMode(ReadMode), hClose, openFile, stdin)
-import qualified Lexer
-import qualified Token
+import Lexer (makeLexer)
+import Token (Token(..), toString)
 
 readAndPrintLoop :: IO Token.Token -> IO ()
-readAndPrintLoop nextToken = do
-  tok <- nextToken
+readAndPrintLoop lexer = do
+  tok <- lexer
   case tok of
     Token.EOF -> return ()
     _ -> do
       putStrLn (Token.toString tok)
-      readAndPrintLoop nextToken
+      readAndPrintLoop lexer
 
 top :: FilePath -> IO ()
 top file = do
