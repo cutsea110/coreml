@@ -32,12 +32,28 @@ data DFA = DFA { q      :: [State]
                }
          deriving (Show, Eq)
 
+{-|
+>>> d = [(0, (epsilon, [1])), (1, ("a", [1])), (1, ("b", [2])), (2, ("a", [2]))]
+>>> epsilonCl d [0]
+[1]
+
+>>> d = [(0, (epsilon, [1,2])), (1, ("a", [1])), (1, (epsilon, [3])), (2, ("b", [2])), (3, ("a", [3]))]
+>>> epsilonCl d [0]
+[1,2]
+
+>>> d = [(0, (epsilon, [1])), (0, (epsilon, [2])), (1, ("a", [1])), (2, ("b", [2])), (1, (epsilon, [0,3])), (2, (epsilon, [3])), (3, ("a", [3]))]
+>>> epsilonCl d [0]
+[1,2]
+>>> epsilonCl d [1]
+[0,3]
+-}
 epsilonCl :: Delta -> [Q] -> [Q]
-epsilonCl d ps = flatten [ qs
-                         | p <- ps
-                         , qs <- [ qs'
-                                 | (p', (symbol, qs')) <- d
-                                 , p' == p && symbol == epsilon
-                                 ]
-                         ]
+epsilonCl d ps
+  = flatten [ qs
+            | p <- ps
+            , qs <- [ qs'
+                    | (p', (symbol, qs')) <- d
+                    , p' == p && symbol == epsilon
+                    ]
+            ]
   where flatten = nub . concat
