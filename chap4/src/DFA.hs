@@ -158,3 +158,55 @@ transitions d (p, a)
     , p' == p && symbol == a
     ]
 
+lang :: NFA -> [S]
+lang (NFA { q = _qs, s = ws, delta = d, q0 = q0, f = fs })
+  = [ w
+    | w <- ws
+    , any (`elem` fs) (delta' d (q0, w))
+    ]
+
+deltaDFA :: Delta -> (State, S) -> State
+deltaDFA d (ps, a) = nub $ concat [ delta' d (p, a) | p <- ps]
+
+addS :: NFA -> (State, S) -> ([State], [State], [(S, State)]) -> ([State], [(S, State)])
+addS NFA { delta = d } (a, s) (q1, q2, omega) = (q1', [(s, a')] ++ omega)
+  where a'  = deltaDFA d (a, s)
+        q1' = if a' `elem` (a:q1 ++ q2) then q1 else a':q1
+
+addQ :: NFA -> State -> ([State], [State], Delta') -> ([State], [State], Delta')
+addQ nfa@(NFA { s = ws }) a (q1, q2, d) = (q1n, a:q2, [(a, omegan)] ++ d)
+  where (q1n, omegan) = foldl phi (q1, []) ws
+          where
+            phi (q1i, omegai) si = addS nfa (a, si) (q1i, q2, omegai)
+
+subsets :: NFA -> ([State], [State], Delta') -> ([State], Delta')
+subsets nfa ([],    qs2, d) = (qs2, d)
+subsets nfa (a:qs1, qs2, d) = subsets nfa (addQ nfa a (qs1, qs2, d))
+
+{-|
+
+選択 (a|b) : εで分岐し、'a' または 'b' を1文字読んだ先で合流しないケース
+
+>>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4])), (3, (epsilon, [5])), (4, (epsilon, [5]))]
+>>> nfa = NFA [0..5] ["a","b"] d 0 [5]
+>>> toDFA nfa
+DFA {q = [[3,5],[],[4,5],[0,1,2]], s = ["a","b"], delta = [([3,5],[("b",[]),("a",[])]),([],[("b",[]),("a",[])]),([4,5],[("b",[]),("a",[])]),([0,1,2],[("b",[4,5]),("a",[3,5])])], q0 = [0], f = [[3,5],[4,5]]}
+
+連接 (abab) : εを含まない、鎖状のNFA。各NFA状態がそのまま1つのDFA状態になる
+
+>>> d2 = [(0, ("a", [1])), (1, ("b", [2])), (2, ("a", [3])), (3, ("b", [4]))]
+>>> nfa2 = NFA [0..4] ["a","b"] d2 0 [4]
+>>> toDFA nfa2
+DFA {q = [[4],[3],[2],[1],[],[0]], s = ["a","b"], delta = [([4],[("b",[]),("a",[])]),([3],[("b",[4]),("a",[])]),([2],[("b",[]),("a",[3])]),([1],[("b",[2]),("a",[])]),([],[("b",[]),("a",[])]),([0],[("b",[]),("a",[1])])], q0 = [0], f = [[4]]}
+-}
+toDFA :: NFA -> DFA
+toDFA (nfa@NFA { q = _qs, s = ws, delta = d, q0 = q0, f = fs })
+  = DFA { q     = qs'
+        , s     = ws
+        , delta = d'
+        , q0    = [q0]
+        , f     = fs'
+        }
+  where a         = epsilonCl d [q0]
+        (qs', d') = subsets nfa ([a], [], [])
+        fs'       = [ a' | a' <- qs', any (`elem` fs) a' ]
