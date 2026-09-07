@@ -12,5 +12,5 @@ main :: IO ()
 main = do
   files <- concat <$> forM targetDir (\d -> do
     dir <- getDirectoryContents d
-    return $ map (d </>) (filter (\f -> takeExtension f == ".hs") dir))
+    return $ (d </>) <$> filter (\f -> takeExtension f == ".hs") dir)
   doctest $ map ("-i" ++) targetDir ++ files
