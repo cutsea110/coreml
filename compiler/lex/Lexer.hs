@@ -214,18 +214,94 @@ string = do
 [(EOF,[])]
 >>> _runTest lexer "   "
 [(EOF,[])]
->>> _runTest lexer "\t \n\"Hello, World!\""
-[(STRING "Hello, World!",[])]
->>> _runTest lexer "_123"
-[(UNDERBAR,[(1,'1'),(2,'2'),(3,'3')])]
->>> _runTest lexer "\t\n6.02e23+3.13"
-[(REAL 6.02e23,[(9,'+'),(10,'3'),(11,'.'),(12,'1'),(13,'3')])]
 >>> _runTest lexer "abc"
 [(ID "abc",[])]
 >>> _runTest lexer "  abc"
 [(ID "abc",[])]
 >>> _runTest lexer "\tabc"
 [(ID "abc",[])]
+>>> _runTest lexer "\t \n\"Hello, World!\""
+[(STRING "Hello, World!",[])]
+>>> _runTest lexer "\t\n6.02e23+3.13"
+[(REAL 6.02e23,[(9,'+'),(10,'3'),(11,'.'),(12,'1'),(13,'3')])]
+>>> _runTest lexer "42"
+[(INT 42,[])]
+>>> _runTest lexer "andalso"
+[(ANDALSO,[])]
+>>> _runTest lexer "and"
+[(AND,[])]
+>>> _runTest lexer "as"
+[(AS,[])]
+>>> _runTest lexer "case"
+[(CASE,[])]
+>>> _runTest lexer "do"
+[(DO,[])]
+>>> _runTest lexer "end"
+[(END,[])]
+>>> _runTest lexer "exception"
+[(EXCEPTION,[])]
+>>> _runTest lexer "fn"
+[(FN,[])]
+>>> _runTest lexer "fun"
+[(FUN,[])]
+>>> _runTest lexer "handle"
+[(HANDLE,[])]
+>>> _runTest lexer "if"
+[(IF,[])]
+>>> _runTest lexer "in"
+[(IN,[])]
+>>> _runTest lexer "infix"
+[(INFIX,[])]
+>>> _runTest lexer "infixr"
+[(INFIXR,[])]
+>>> _runTest lexer "nonfix"
+[(NONFIX,[])]
+>>> _runTest lexer "let"
+[(LET,[])]
+>>> _runTest lexer "local"
+[(LOCAL,[])]
+>>> _runTest lexer "of"
+[(OF,[])]
+>>> _runTest lexer "op"
+[(OP,[])]
+>>> _runTest lexer "open"
+[(OPEN,[])]
+>>> _runTest lexer "orelse"
+[(ORELSE,[])]
+>>> _runTest lexer "raise"
+[(RAISE,[])]
+>>> _runTest lexer "rec"
+[(REC,[])]
+>>> _runTest lexer "then"
+[(THEN,[])]
+>>> _runTest lexer "use"
+[(USE,[])]
+>>> _runTest lexer "val"
+[(VAL,[])]
+>>> _runTest lexer "while"
+[(WHILE,[])]
+>>> _runTest lexer ","
+[(COMMA,[])]
+>>> _runTest lexer "."
+[(PERIOD,[])]
+>>> _runTest lexer "..."
+[(TRIPLEDOT,[])]
+>>> _runTest lexer ":"
+[(COLON,[])]
+>>> _runTest lexer ";"
+[(SEMICOLON,[])]
+>>> _runTest lexer "="
+[(EQ,[])]
+>>> _runTest lexer "=>"
+[(ARROW,[])]
+>>> _runTest lexer "["
+[(LBRACE,[])]
+>>> _runTest lexer "]"
+[(RBRACE,[])]
+>>> _runTest lexer "_123"
+[(UNDERBAR,[(1,'1'),(2,'2'),(3,'3')])]
+>>> _runTest lexer "|"
+[(VERTICALBAR,[])]
 >>> _runTest lexer " @!#"
 [(SPECIAL '@',[(2,'!'),(3,'#')])]
 -}
@@ -234,6 +310,7 @@ lexer = do
   _ <- pMunch ws
   f
   where
+    -- NOTE: 順番は大事で先頭からの部分文字列が同じトークンは長い方から処理する必要がある
     f = (EOF <$ pEof) `pAltL`
         (STRING <$> string) `pAltL`
         (COMMA <$ pChar ',') `pAltL`
@@ -241,8 +318,8 @@ lexer = do
         (PERIOD <$ pChar '.') `pAltL`
         (COLON <$ pChar ':') `pAltL`
         (SEMICOLON <$ pChar ';') `pAltL`
-        (EQ <$ pChar '=') `pAltL`
         (ARROW <$ pLit "=>") `pAltL`
+        (EQ <$ pChar '=') `pAltL`
         (LBRACE <$ pChar '[') `pAltL`
         (RBRACE <$ pChar ']') `pAltL`
         (UNDERBAR <$ pChar '_') `pAltL`
@@ -258,15 +335,15 @@ lexer = do
         (FUN <$ pLit "fun") `pAltL`
         (HANDLE <$ pLit "handle") `pAltL`
         (IF <$ pLit "if") `pAltL`
-        (IN <$ pLit "in") `pAltL`
-        (INFIX <$ pLit "infix") `pAltL`
         (INFIXR <$ pLit "infixr") `pAltL`
+        (INFIX <$ pLit "infix") `pAltL`
+        (IN <$ pLit "in") `pAltL`
         (NONFIX <$ pLit "nonfix") `pAltL`
         (LET <$ pLit "let") `pAltL`
         (LOCAL <$ pLit "local") `pAltL`
         (OF <$ pLit "of") `pAltL`
-        (OP <$ pLit "op") `pAltL`
         (OPEN <$ pLit "open") `pAltL`
+        (OP <$ pLit "op") `pAltL`
         (ORELSE <$ pLit "orelse") `pAltL`
         (RAISE <$ pLit "raise") `pAltL`
         (REC <$ pLit "rec") `pAltL`
