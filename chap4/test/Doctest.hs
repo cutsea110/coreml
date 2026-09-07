@@ -1,9 +1,16 @@
 module Main (main) where
 
+import Control.Monad (forM)
+import System.Directory (getDirectoryContents)
+import System.FilePath (takeExtension, (</>))
 import Test.DocTest (doctest)
 
+targetDir :: [FilePath]
+targetDir = ["src", "app"]
+
 main :: IO ()
-main = doctest
-  [ "-isrc"
-  , "src/DFA.hs"
-  ]
+main = do
+  files <- concat <$> forM targetDir (\d -> do
+    dir <- getDirectoryContents d
+    return $ map (d </>) (filter (\f -> takeExtension f == ".hs") dir))
+  doctest $ map ("-i" ++) targetDir ++ files
