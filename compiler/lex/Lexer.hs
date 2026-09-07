@@ -8,7 +8,7 @@ import System.IO (Handle, SeekMode(AbsoluteSeek), hFlush, hGetContents,
 
 import Parser
 import Token
-import Prelude hiding (exp)
+import Prelude hiding (exp, Ordering(..))
 
 _runTest :: Parser a -> String -> [(a, Stream)]
 _runTest p text = runParser p $ toStream text
@@ -137,6 +137,20 @@ exp = do
   return ('e':sg ++ ds)
 
 {-|
+>>> _runTest int "42"
+[("42",[])]
+>>> _runTest int "-1"
+[("-1",[])]
+>>> _runTest int "+3"
+[]
+-}
+int :: Parser String
+int = do
+  sg <- sign
+  n <- num
+  return (sg ++ n)
+
+{-|
 >>> _runTest real "-123.45e-6"
 [("-123.45e-6",[])]
 >>> _runTest real "3.14"
@@ -193,6 +207,8 @@ string = do
     escaped = pApply2 (\a b -> [a, b]) (pChar '\\') (pSat (const True))
     normal = (:[]) `pApply` pSat (/= '"')
 
+
+
 {-|
 >>> _runTest lexer ""
 [(EOF,[])]
@@ -220,8 +236,46 @@ lexer = do
   where
     f = (EOF <$ pEof) `pAltL`
         (STRING <$> string) `pAltL`
+        (COMMA <$ pChar ',') `pAltL`
+        (TRIPLEDOT <$ pLit "...") `pAltL`
+        (PERIOD <$ pChar '.') `pAltL`
+        (COLON <$ pChar ':') `pAltL`
+        (SEMICOLON <$ pChar ';') `pAltL`
+        (EQ <$ pChar '=') `pAltL`
+        (ARROW <$ pLit "=>") `pAltL`
+        (LBRACE <$ pChar '[') `pAltL`
+        (RBRACE <$ pChar ']') `pAltL`
         (UNDERBAR <$ pChar '_') `pAltL`
+        (VERTICALBAR <$ pChar '|') `pAltL`
+        (ANDALSO <$ pLit "andalso") `pAltL`
+        (AND <$ pLit "and") `pAltL`
+        (AS <$ pLit "as") `pAltL`
+        (CASE <$ pLit "case") `pAltL`
+        (DO <$ pLit "do") `pAltL`
+        (END <$ pLit "end") `pAltL`
+        (EXCEPTION <$ pLit "exception") `pAltL`
+        (FN <$ pLit "fn") `pAltL`
+        (FUN <$ pLit "fun") `pAltL`
+        (HANDLE <$ pLit "handle") `pAltL`
+        (IF <$ pLit "if") `pAltL`
+        (IN <$ pLit "in") `pAltL`
+        (INFIX <$ pLit "infix") `pAltL`
+        (INFIXR <$ pLit "infixr") `pAltL`
+        (NONFIX <$ pLit "nonfix") `pAltL`
+        (LET <$ pLit "let") `pAltL`
+        (LOCAL <$ pLit "local") `pAltL`
+        (OF <$ pLit "of") `pAltL`
+        (OP <$ pLit "op") `pAltL`
+        (OPEN <$ pLit "open") `pAltL`
+        (ORELSE <$ pLit "orelse") `pAltL`
+        (RAISE <$ pLit "raise") `pAltL`
+        (REC <$ pLit "rec") `pAltL`
+        (THEN <$ pLit "then") `pAltL`
+        (USE <$ pLit "use") `pAltL`
+        (VAL <$ pLit "val") `pAltL`
+        (WHILE <$ pLit "while") `pAltL`
         (REAL . read <$> real) `pAltL`
+        (INT . read <$> int) `pAltL`
         (ID <$> ident) `pAltL`
         (SPECIAL <$> pSat (const True))
 
