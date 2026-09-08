@@ -6,6 +6,8 @@ import Data.List (nub)
 -- ユーティリティ
 flatten :: Eq a => [[a]] -> [a]
 flatten = nub . concat
+hasAnyOf :: Eq a => [a] -> [a] -> Bool
+fs `hasAnyOf` xs = any (`elem` fs) xs
 
 type S = String
 
@@ -192,7 +194,7 @@ True
 -}
 lang :: NFA -> [S]
 lang (NFA { q = _qs, s = ws, delta = d, q0 = q0, f = fs })
-  = [w | w <- ws, any (`elem` fs) (delta' d (q0, w))]
+  = [w | w <- ws, fs `hasAnyOf` delta' d (q0, w)]
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
@@ -328,4 +330,4 @@ toDFA (nfa@NFA { q = _qs, s = ws, delta = d, q0 = q0, f = fs })
         }
   where a         = epsilonCl d [q0]
         (qs', d') = subsets nfa ([a], [], [])
-        fs'       = [ a' | a' <- qs', any (`elem` fs) a' ]
+        fs'       = [ a' | a' <- qs', fs `hasAnyOf` a' ]
