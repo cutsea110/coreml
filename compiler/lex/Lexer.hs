@@ -222,8 +222,12 @@ string = do
 [(ID "abc",[])]
 >>> _runTest lexer "\t \n\"Hello, World!\""
 [(STRING "Hello, World!",[])]
->>> _runTest lexer "\t\n6.02e23+3.13"
-[(REAL 6.02e23,[(9,'+'),(10,'3'),(11,'.'),(12,'1'),(13,'3')])]
+>>> _runTest lexer "3.14"
+[(REAL 3.14,[])]
+>>> _runTest lexer "2e10"
+[(REAL 2.0e10,[])]
+>>> _runTest lexer "2e-10"
+[(REAL 2.0e-10,[])]
 >>> _runTest lexer "42"
 [(INT 42,[])]
 >>> _runTest lexer "andalso"
