@@ -183,7 +183,7 @@ toStream = zip [0..]
 >>> runParser (pSat Data.Char.isAlpha) $ toStream "123"
 []
 -}
-pSat :: (Char -> Bool)-> Parser Char
+pSat :: (Char -> Bool) -> Parser Char
 pSat p = Parser f
   where
     f [] = []
