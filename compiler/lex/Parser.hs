@@ -57,9 +57,6 @@ pOneOrMoreWithSep sep p = pApply2 (:) p (pZeroOrMore (sep *> p))
 pMunch1WithSep :: Parser sep -> Parser a -> Parser [a]
 pMunch1WithSep sep p = pApply2 (:) p (pMunch (sep *> p))
 
-pBracket :: Parser open -> Parser close -> Parser a -> Parser a
-pBracket open close p = open *> p <* close
-
 instance Functor Parser where
   fmap = pApply
 
