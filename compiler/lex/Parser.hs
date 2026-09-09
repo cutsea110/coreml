@@ -20,9 +20,9 @@ pEmpty x = Parser (\toks -> [(x, toks)])
 []
 -}
 pBind :: Parser a -> (a -> Parser b) -> Parser b
-px `pBind` f = Parser (\toks -> [ (v, toks'')
-                                | (x, toks') <- runParser px toks
-                                , (v, toks'') <- runParser (f x) toks'
+px `pBind` f = Parser (\toks -> [ (v, toks2)
+                                | (x, toks1) <- runParser px toks
+                                , (v, toks2) <- runParser (f x) toks1
                                 ])
 
 {-|
@@ -84,9 +84,9 @@ p `pAltL` q = Parser (\toks -> runParser p toks <+ runParser q toks)
 []
 -}
 pAp :: Parser (a -> b) -> Parser a -> Parser b
-pf `pAp` px = Parser (\toks -> [ (f v, toks'')
-                               | (f, toks') <- runParser pf toks
-                               , (v, toks'') <- runParser px toks'
+pf `pAp` px = Parser (\toks -> [ (f v, toks2)
+                               | (f, toks1) <- runParser pf toks
+                               , (v, toks2) <- runParser px toks1
                                ])
 
 {-|
@@ -96,9 +96,9 @@ pf `pAp` px = Parser (\toks -> [ (f v, toks'')
 []
 -}
 pApply2 :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
-pApply2 f p q = Parser (\toks -> [ (f x y, toks'')
-                                 | (x, toks') <- runParser p toks
-                                 , (y, toks'') <- runParser q toks'
+pApply2 f p q = Parser (\toks -> [ (f x y, toks2)
+                                 | (x, toks1) <- runParser p toks
+                                 , (y, toks2) <- runParser q toks1
                                  ])
 
 {-|
@@ -167,12 +167,12 @@ instance Functor Parser where
   fmap = pApply
 
 instance Applicative Parser where
-  pure = pEmpty
+  pure  = pEmpty
   (<*>) = pAp
 
 instance Monad Parser where
   return = pure
-  (>>=) = pBind
+  (>>=)  = pBind
 
 toStream :: String -> Stream
 toStream = zip [0..]
@@ -188,7 +188,7 @@ pSat p = Parser f
   where
     f [] = []
     f ((_, c):toks)
-      | p c = [(c, toks)]
+      | p c       = [(c, toks)]
       | otherwise = []
 
 {-|
