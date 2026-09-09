@@ -193,7 +193,7 @@ True
 ["","a","aa","aaa"]
 -}
 lang :: NFA -> [S]
-lang (NFA { q = _qs, s = ws, delta = d, q0 = q0, f = fs })
+lang (NFA _ ws d q0 fs)
   = [w | w <- ws, fs `hasAnyOf` delta' d (q0, w)]
 
 {-|
@@ -207,10 +207,7 @@ Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε
 NFA {q = [0,1,2,3,4,5], s = ["ab"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0])),(1,("",[2])),(3,("",[5]))], q0 = 4, f = [5]}
 -}
 concatNFA :: NFA -> NFA -> [S] -> NFA
-concatNFA
-  (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] })
-  (NFA { q = qs2, delta = d2, q0 = p2, f = [fq2] })
-  ws
+concatNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
   = NFA { q     = qs1 ++ qs2 ++ [p, qf]
         , s     = ws
         , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1]))
@@ -235,10 +232,7 @@ Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[
 NFA {q = [0,1,2,3,4,5], s = ["a","b"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0,2])),(1,("",[5])),(3,("",[5]))], q0 = 4, f = [5]}
 -}
 choiceNFA :: NFA -> NFA -> [S] -> NFA
-choiceNFA
-  (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] })
-  (NFA { q = qs2, delta = d2, q0 = p2, f = [fq2] })
-  ws
+choiceNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
   = NFA { q     = qs1 ++ qs2 ++ [p, qf]
         , s     = ws
         , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1,p2]))
@@ -262,9 +256,7 @@ Nr1* = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1,q])]),(q1,[(ε,[p1,q])])}, p, [q])
 NFA {q = [0,1,2,3], s = ["","a","aa"], delta = [(0,("a",[1])),(2,("",[0,3])),(1,("",[0,3]))], q0 = 2, f = [3]}
 -}
 closureNFA :: NFA -> [S] -> NFA
-closureNFA
-  (NFA { q = qs1, delta = d1, q0 = p1, f = [fq1] })
-  ws
+closureNFA (NFA qs1 _ d1 p1 [fq1]) ws
   = NFA { q     = qs1 ++ [p, qf]
         , s     = ws
         , delta = d1 ++ [ (p,   (epsilon, [p1,qf]))
@@ -286,7 +278,7 @@ addS NFA { delta = d } (a, s) (q1, q2, omega) = (q1', [(s, a')] ++ omega)
         q1' = if a' `elem` (a:q1 ++ q2) then q1 else a':q1
 
 addQ :: NFA -> State -> ([State], [State], Delta') -> ([State], [State], Delta')
-addQ nfa@(NFA { s = ws }) a (q1, q2, d) = (q1n, a:q2, [(a, omegan)] ++ d)
+addQ nfa@NFA { s = ws } a (q1, q2, d) = (q1n, a:q2, [(a, omegan)] ++ d)
   where (q1n, omegan) = foldl phi (q1, []) ws
           where
             phi (q1i, omegai) si = addS nfa (a, si) (q1i, q2, omegai)
@@ -321,7 +313,7 @@ NFA自体が循環パターンになっている。
 DFA {q = [[1,0,3],[2,0,3]], s = ["a"], delta = [([1,0,3],[("a",[1,0,3])]),([2,0,3],[("a",[1,0,3])])], q0 = [2], f = [[1,0,3],[2,0,3]]}
 -}
 toDFA :: NFA -> DFA
-toDFA (nfa@NFA { q = _qs, s = ws, delta = d, q0 = q0, f = fs })
+toDFA nfa@(NFA _ ws d q0 fs)
   = DFA { q     = qs'
         , s     = ws
         , delta = d'
