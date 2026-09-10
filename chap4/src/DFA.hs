@@ -175,7 +175,7 @@ transitions d (p, a) = [qs' | (p', (s, qs')) <- d, p' == p && s == a]
 >>> lang n2
 ["b"]
 
->>> (_, n12) = runFresh (appendNFA n1 n2) ["ab"] (Env 4)
+>>> (_, n12) = runFresh (appendNFA n1 n2) (Env 4 ["ab"])
 >>> lang n12
 ["ab"]
 >>> [x ++ y | x <- lang n1, y <- lang n2] == lang n12
@@ -183,7 +183,7 @@ True
 
 - 選択 (r1|r2) : L(Nr1|r2) = L(Nr1) `union` L(Nr2)
 
->>> (_, nChoice) = runFresh (alterNFA n1 n2) ["a","b"] (Env 4)
+>>> (_, nChoice) = runFresh (alterNFA n1 n2) (Env 4 ["a","b"])
 >>> lang nChoice
 ["a","b"]
 >>> (lang n1 ++ lang n2) == lang nChoice
@@ -191,7 +191,7 @@ True
 
 - 閉包 (r1*) : L(Nr1*) = L(Nr1)* = {""} `union` L(Nr1) `union` L(Nr1)L(Nr1) `union` ...
 
->>> (_, nStar) = runFresh (closureNFA n1) ["", "a", "aa", "aaa"] (Env 2)
+>>> (_, nStar) = runFresh (closureNFA n1) (Env 2 ["", "a", "aa", "aaa"])
 >>> lang nStar
 ["","a","aa","aaa"]
 -}
@@ -203,7 +203,7 @@ NFA が特定の1つの文字列を受理するかどうかを判定する。`la
 アルファベットΣ（`s`フィールド）に含まれる候補しか調べられないので、
 Σそのものとは無関係な（例えば連接後の複数文字の）文字列を直接テストしたいときに使う。
 
->>> (_, n) = runFresh (char 'a') ["a","b"] defEnv
+>>> (_, n) = runFresh (char 'a') (newEnv ["a","b"])
 >>> accepts n "a"
 True
 >>> accepts n "b"
@@ -216,7 +216,7 @@ accepts (NFA _ _ d q0 fs) w = fs `hasAnyOf` delta' d (q0, w)
 何も読まずにε（空文字列）だけを受理するNFA。r? のような「省略可能」を
 alterNFA と組み合わせて表現するときの、もう片方の選択肢として使う。
 
->>> (_, n) = runFresh emptyNFA ["", "a"] defEnv
+>>> (_, n) = runFresh emptyNFA (newEnv ["", "a"])
 >>> lang n
 [""]
 -}
@@ -231,7 +231,7 @@ emptyNFA = do
 一切遷移を作らないことで表現する。choiceNFA（N項の選択）の空リストの
 場合に、選択の単位元（Φ ∪ L = L）として使う。
 
->>> (_, n) = runFresh noneNFA ["", "a"] defEnv
+>>> (_, n) = runFresh noneNFA (newEnv ["", "a"])
 >>> lang n
 []
 -}
@@ -259,7 +259,7 @@ let (_, ok) = runFresh (do { na <- char 'a'
                            ; nb <- char 'b'
                            ; nab <- appendNFA na nb
                            ; pure (all (accepts nab) [x++y | x <- lang na, y <- lang nb])
-                           }) ["a","b"] defEnv
+                           }) (newEnv ["a","b"])
 :}
 
 >>> ok
@@ -294,7 +294,7 @@ let (_, ok) = runFresh (do { na <- char 'a'
                            ; nc <- char 'c'
                            ; nabc <- concatNFA [na,nb,nc]
                            ; pure (all (accepts nabc) (map concat (sequence [lang na, lang nb, lang nc])))
-                           }) ["a","b","c"] defEnv
+                           }) (newEnv ["a","b","c"])
 :}
 
 >>> ok
@@ -317,7 +317,7 @@ let (_, ok) = runFresh (do { na <- char 'a'
                            ; nb <- char 'b'
                            ; nAlt <- alterNFA na nb
                            ; pure ((lang na ++ lang nb) == lang nAlt)
-                           }) ["a","b"] defEnv
+                           }) (newEnv ["a","b"])
 :}
 
 >>> ok
@@ -351,7 +351,7 @@ let (_, ok) = runFresh (do { na <- char 'a'
                            ; nc <- char 'c'
                            ; nChoice <- choiceNFA [na,nb,nc]
                            ; pure (concatMap lang [na,nb,nc] == lang nChoice)
-                           }) ["a","b","c"] defEnv
+                           }) (newEnv ["a","b","c"])
 :}
 
 >>> ok
@@ -384,7 +384,7 @@ let (_, ok) = runFresh (do { na <- char 'a'
                                     , y <- lang na
                                     , z <- lang na]
                            ; pure (all (accepts nStar) predicted)
-                           }) ["a"] defEnv
+                           }) (newEnv ["a"])
 :}
 
 >>> ok
@@ -454,7 +454,7 @@ NFA自体が循環パターンになっている。
 その結果DFA側の遷移表にも状態 [1,0,3] が "a" を読んで自分自身に戻る自己ループが現れる。
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
->>> (_, nStar) = runFresh (closureNFA n1) ["a"] (Env 2)
+>>> (_, nStar) = runFresh (closureNFA n1) (Env 2 ["a"])
 >>> toDFA nStar
 DFA {q = [[1,0,3],[2,0,3]], s = ["a"], delta = [([1,0,3],[("a",[1,0,3])]),([2,0,3],[("a",[1,0,3])])], q0 = [2,0,3], f = [[1,0,3],[2,0,3]]}
 
@@ -550,7 +550,7 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 
 - [a-c] : charsets で作った文字集合例
 
->>> (_, nfa) = runFresh (charsets "abc") ["a","b","c"] defEnv
+>>> (_, nfa) = runFresh (charsets "abc") (newEnv ["a","b","c"])
 >>> dfa = minimizeDFA (toDFA nfa)
 >>> map (runDFA dfa) ["a","b","c","d","","ab","ac"]
 [True,True,True,False,False,False,False]
@@ -562,7 +562,7 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 >>> :{
 let (_, nstar) = runFresh (do { nabc <- charsets "abc"
                               ; closureNFA nabc
-                              }) abcAlphabet defEnv
+                              }) (newEnv abcAlphabet)
 :}
 
 >>> starDfa = minimizeDFA (toDFA nstar)
@@ -577,7 +577,7 @@ let (e4, nabcSeq) = runFresh (do { na <- char 'a'
                                  ; nb <- char 'b'
                                  ; nc <- char 'c'
                                  ; concatNFA [na,nb,nc]
-                                 }) abcAlphabet defEnv
+                                 }) (newEnv abcAlphabet)
 :}
 
 >>> abcDfa = minimizeDFA (toDFA nabcSeq)
@@ -585,9 +585,9 @@ let (e4, nabcSeq) = runFresh (do { na <- char 'a'
 [False,False,False,False,False,False,False,True]
 
 
-- (abc)* : 上の nabcSeq に closureNFA をかぶせるだけの例
+- (abc)* : 上の nabcSeq に closureNFA をかぶせるだけの例（e4 は既にΣを含んでいるので渡し直す必要はない）
 
->>> (_, nabcStar) = runFresh (closureNFA nabcSeq) abcAlphabet e4
+>>> (_, nabcStar) = runFresh (closureNFA nabcSeq) e4
 >>> abcStarDfa = minimizeDFA (toDFA nabcStar)
 >>> map (runDFA abcStarDfa) ["", "abc", "abcabc", "abcabcabc", "ab", "abca", "abcabx", "xabc"]
 [True,True,True,True,False,False,False,False]
@@ -607,7 +607,7 @@ let (_, nNum) = runFresh (do { nDash <- char '-'
                              ; nDigits2 <- charsets digits
                              ; nDigitsStar <- closureNFA nDigits2
                              ; concatNFA [nOptDash, nDigits1, nDigitsStar]
-                             }) numAlphabet defEnv
+                             }) (newEnv numAlphabet)
 :}
 
 >>> numDfa = minimizeDFA (toDFA nNum)
@@ -621,58 +621,66 @@ runDFA (DFA _ _ d q0 fs) w = foldl step q0 w `elem` fs
       row <- lookup st d
       lookup [c] row
 
-newtype Env = Env { getEnv :: Int } deriving (Show, Eq)
-defEnv :: Env
-defEnv = Env 0
-getNext :: Env -> (Int, Env)
-getNext (Env n) = (n, Env (n + 1))
-
 {-|
-Env（採番用のカウンタ）に加えて、構築中の正規表現全体で共有するアルファベットΣを
-読み取り専用の設定として持ち回る小さなモナド。`char`/`charsets`/`appendNFA`/...
-はどれも「同じΣの上でNFAを組み立てる」計算なので、Σを明示的な引数として
-毎回受け渡す代わりにこの型でラップし、`do` 記法で書けるようにする。
-Σは`runFresh`を呼ぶときに一度だけ与え、以後は`alphabet`で参照する
+採番用のカウンタに加えて、構築中の正規表現全体で共有するアルファベットΣを
+一緒に持つ。Σは `newEnv` で最初に決めたら以後変わらない
 （`local`のような差し替えは提供しない＝構築全体でΣは1つに固定される）。
 
->>> runFresh (pure 'x') ["a","b"] defEnv
-(Env {getEnv = 0},'x')
->>> runFresh (do { a <- fresh; b <- fresh; pure (a,b) }) ["a","b"] defEnv
-(Env {getEnv = 2},(0,1))
->>> runFresh alphabet ["a","b"] defEnv
-(Env {getEnv = 0},["a","b"])
+>>> sigma (newEnv ["a","b"])
+["a","b"]
 -}
-newtype Fresh a = Fresh { runFresh :: [S] -> Env -> (Env, a) }
+data Env = Env { getEnv :: Int, sigma :: [S] } deriving (Show, Eq)
+
+newEnv :: [S] -> Env
+newEnv ws = Env 0 ws
+
+getNext :: Env -> (Int, Env)
+getNext (Env n ws) = (n, Env (n + 1) ws)
+
+{-|
+Env（採番用のカウンタとΣ）を持ち回る小さな状態モナド。`char`/`charsets`/
+`appendNFA`/... はどれも「同じΣの上で新しい状態番号を必要なだけ採番しながら
+NFAを組み立てる」計算なので、Env を明示的な引数として毎回受け渡す代わりに
+この型でラップし、`do` 記法で書けるようにする。
+
+>>> runFresh (pure 'x') (newEnv ["a","b"])
+(Env {getEnv = 0, sigma = ["a","b"]},'x')
+>>> runFresh (do { a <- fresh; b <- fresh; pure (a,b) }) (newEnv ["a","b"])
+(Env {getEnv = 2, sigma = ["a","b"]},(0,1))
+>>> runFresh alphabet (newEnv ["a","b"])
+(Env {getEnv = 0, sigma = ["a","b"]},["a","b"])
+-}
+newtype Fresh a = Fresh { runFresh :: Env -> (Env, a) }
 
 instance Functor Fresh where
-  fmap f (Fresh g) = Fresh $ \sigma env -> let (env', a) = g sigma env in (env', f a)
+  fmap f (Fresh g) = Fresh $ \env -> let (env', a) = g env in (env', f a)
 
 instance Applicative Fresh where
-  pure a = Fresh $ \_ env -> (env, a)
-  Fresh mf <*> Fresh ma = Fresh $ \sigma env ->
-    let (env1, f) = mf sigma env
-        (env2, a) = ma sigma env1
+  pure a = Fresh $ \env -> (env, a)
+  Fresh mf <*> Fresh ma = Fresh $ \env ->
+    let (env1, f) = mf env
+        (env2, a) = ma env1
     in (env2, f a)
 
 instance Monad Fresh where
-  Fresh ma >>= f = Fresh $ \sigma env ->
-    let (env1, a) = ma sigma env
-    in runFresh (f a) sigma env1
+  Fresh ma >>= f = Fresh $ \env ->
+    let (env1, a) = ma env
+    in runFresh (f a) env1
 
 fresh :: Fresh Q
-fresh = Fresh $ \_ env ->
+fresh = Fresh $ \env ->
   let (n, env') = getNext env
   in (env', n)
 
 alphabet :: Fresh [S]
-alphabet = Fresh $ \sigma env -> (env, sigma)
+alphabet = Fresh $ \env -> (env, sigma env)
 
 {-|
 1文字だけを読むNFAを作る。自分が読む記号はその1文字だけでも、`s`フィールドには
 `alphabet`（構築全体で共有するΣ）を使う。他のNFAと連接・選択する際に
 同じΣを前提にする必要があるため。
 
->>> (_, n) = runFresh (char 'a') ["a","b"] defEnv
+>>> (_, n) = runFresh (char 'a') (newEnv ["a","b"])
 >>> lang n
 ["a"]
 -}
@@ -694,7 +702,7 @@ char c = do
 NFAへε分岐、各文字のNFAの受理状態から新しい受理状態1つへε収束、という
 1段のfan-out/fan-inで組み立てる。
 
->>> (_, NFA nq _ nd nq0 nf) = runFresh (charsets "abc") ["a","b","c"] defEnv
+>>> (_, NFA nq _ nd nq0 nf) = runFresh (charsets "abc") (newEnv ["a","b","c"])
 >>> lang (NFA nq ["a","b","c","d","","ab","ac"] nd nq0 nf)
 ["a","b","c"]
 -}
