@@ -2,7 +2,7 @@
 module DFA where
 
 import Control.Monad (foldM)
-import Data.List (nub, (\\))
+import Data.List (nub, unsnoc, (\\))
 
 -- ユーティリティ
 flatten :: Eq a => [[a]] -> [a]
@@ -122,8 +122,10 @@ epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
 delta' :: Delta -> (Q, S) -> State
 delta' d (p, "") = epsilonCl d [p]
 delta' d (p, wa) = epsilonCl d $ flatten [qs | q <- delta' d (p, w), qs <- transitions d (q, a)]
-  where w = init wa
-        a = last wa:[]
+  where (w, a) = case unsnoc wa of
+          Nothing -> error "delta': empty string"
+          Just (w', a') -> (w', [a'])
+
 
 {-|
 >>> d = [(0, ("a", [1])), (1, ("b", [2])), (2, ("c", [3])), (3, ("d", [4]))]
@@ -511,7 +513,7 @@ minimizeDFA (DFA qs ws d q0 fs)
       lookup sym row
 
     classOf :: Partition -> State -> Int
-    classOf p st = head [ i | (i, blk) <- zip [0 :: Int ..] p, st `elem` blk ]
+    classOf p st = head [ i | (i, blk) <- zip [0::Int ..] p, st `elem` blk ]
 
     sigOf :: Partition -> State -> [Int]
     sigOf p st = [ classOf p (target st sym) | sym <- ws ]
@@ -653,7 +655,9 @@ instance Monad Fresh where
     in runFresh (f a) env1
 
 fresh :: Fresh Q
-fresh = Fresh (\env -> let (n, env') = getNext env in (env', n))
+fresh = Fresh $ \env ->
+  let (n, env') = getNext env
+  in (env', n)
 
 {-|
 1文字だけを読むNFAを作る。`ws` は組み立てようとしている正規表現全体で
