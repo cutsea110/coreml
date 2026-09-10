@@ -149,7 +149,7 @@ delta' d (p, wa) = epsilonCl d $ flatten [qs | q <- delta' d (p, w), qs <- trans
 []
 -}
 transitions :: Delta -> (Q, S) -> [State]
-transitions d (p, a) = [qs' | (p', (symbol, qs')) <- d, p' == p && symbol == a]
+transitions d (p, a) = [qs' | (p', (s, qs')) <- d, p' == p && s == a]
 
 {-|
 - r = 空のとき L(Nr) = []
@@ -194,8 +194,7 @@ True
 ["","a","aa","aaa"]
 -}
 lang :: NFA -> [S]
-lang (NFA _ ws d q0 fs)
-  = [w | w <- ws, fs `hasAnyOf` delta' d (q0, w)]
+lang (NFA _ ws d q0 fs) = [w | w <- ws, fs `hasAnyOf` delta' d (q0, w)]
 
 {-|
 NFA が特定の1つの文字列を受理するかどうかを判定する。`lang` はNFA自身が持つ
@@ -375,10 +374,10 @@ let (_, ok) = runFresh (do { na <- char 'a' ws
                            ; nStar <- closureNFA na ws
                            ; let predicted = [""] ++
                                     lang na ++
-                                    [x++y
+                                    [ x++y
                                     | x <- lang na
                                     , y <- lang na] ++
-                                    [x++y++z
+                                    [ x++y++z
                                     | x <- lang na
                                     , y <- lang na
                                     , z <- lang na]
@@ -419,7 +418,7 @@ addQ nfa@NFA { s = ws } a (q1, q2, d) = (q1n, a:q2, [(a, omegan)] ++ d)
 
 subsets :: NFA -> ([State], [State], Delta') -> ([State], Delta')
 subsets _   ([],    qs2, d) = (qs2, d)
-subsets nfa (a:qs1, qs2, d) = subsets nfa (addQ nfa a (qs1, qs2, d))
+subsets nfa (a:qs1, qs2, d) = subsets nfa $ addQ nfa a (qs1, qs2, d)
 
 {-|
 
@@ -527,7 +526,7 @@ minimizeDFA (DFA qs ws d q0 fs)
     stabilize :: Partition -> Partition
     stabilize p
       | length p' == length p = p
-      | otherwise              = stabilize p'
+      | otherwise             = stabilize p'
       where p' = refine p
 
     finalP :: Partition
@@ -669,9 +668,7 @@ char :: Char -> [S] -> Fresh NFA
 char c ws = do
   s <- fresh
   e <- fresh
-  pure (NFA [s,e] ws [(s,(sym,[e]))] s [e])
-  where
-    sym = [c]
+  pure (NFA [s,e] ws [(s,([c],[e]))] s [e])
 
 {-|
 [a-zA-Z] のような文字集合を1つのNFAにする。`char` と同じ理由で、Σは自分の
