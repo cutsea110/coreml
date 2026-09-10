@@ -233,7 +233,14 @@ appendNFA という名前にしている（N個まとめて連接するのは co
 
 L(Nr1r2) = L(Nr1)L(Nr2) の確認（AB = [xy | x <- A, y <- B]）:
 
->>> (_, ok) = runFresh (do { na <- char 'a'; nb <- char 'b'; nab <- appendNFA na nb ["ab"]; pure ([x++y | x <- lang na, y <- lang nb] == lang nab) }) defEnv
+>>> :{
+let (_, ok) = runFresh (do { na <- char 'a'
+                            ; nb <- char 'b'
+                            ; nab <- appendNFA na nb ["ab"]
+                            ; pure ([x++y | x <- lang na, y <- lang nb] == lang nab)
+                            }) defEnv
+:}
+
 >>> ok
 True
 -}
