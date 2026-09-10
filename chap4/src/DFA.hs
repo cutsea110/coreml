@@ -172,7 +172,7 @@ transitions d (p, a) = [qs' | (p', (symbol, qs')) <- d, p' == p && symbol == a]
 >>> lang n2
 ["b"]
 
->>> (_, n12) = concatNFA (Env 4) n1 n2 ["ab"]
+>>> (_, n12) = appendNFA (Env 4) n1 n2 ["ab"]
 >>> lang n12
 ["ab"]
 >>> [x ++ y | x <- lang n1, y <- lang n2] == lang n12
@@ -211,15 +211,16 @@ emptyNFA env ws = (env1, NFA [p] ws [] p [p])
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
 Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε,[q])])}, p, [q])
-を作る。新規状態 p, q は Env から採番する。
+を作る。新規状態 p, q は Env から採番する。2項の連接なので `(++)` に倣って
+appendNFA という名前にしている（N個まとめて連接するのは concatNFA、`concat` 相当）。
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
 >>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
->>> concatNFA (Env 4) n1 n2 ["ab"]
+>>> appendNFA (Env 4) n1 n2 ["ab"]
 (Env {getEnv = 6},NFA {q = [0,1,2,3,4,5], s = ["ab"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0])),(1,("",[2])),(3,("",[5]))], q0 = 4, f = [5]})
 -}
-concatNFA :: Env -> NFA -> NFA -> [S] -> (Env, NFA)
-concatNFA env (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
+appendNFA :: Env -> NFA -> NFA -> [S] -> (Env, NFA)
+appendNFA env (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
   = ( env2
     , NFA { q     = qs1 ++ qs2 ++ [p, qf]
           , s     = ws
@@ -233,7 +234,23 @@ concatNFA env (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
     )
   where (p,  env1) = getNext env
         (qf, env2) = getNext env1
-concatNFA _ _ _ _ = error "concatNFA: f must be a singleton list"
+appendNFA _ _ _ _ = error "appendNFA: f must be a singleton list"
+
+{-|
+NFA のリストを1つに連接する。`concat = foldr (++) []` に倣い、
+appendNFA を畳み込んで作る。空リストは連接の単位元である emptyNFA（εだけを受理）になる。
+
+>>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
+>>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
+>>> n3 = NFA [4,5] ["c"] [(4,("c",[5]))] 4 [5]
+>>> (_, n123) = concatNFA (Env 6) [n1,n2,n3] ["abc"]
+>>> lang n123
+["abc"]
+-}
+concatNFA :: Env -> [NFA] -> [S] -> (Env, NFA)
+concatNFA env []       ws = emptyNFA env ws
+concatNFA env (n:nfas) ws = foldl step (env, n) nfas
+  where step (e, acc) nfa = appendNFA e acc nfa ws
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
@@ -447,14 +464,13 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 [True,True,True,True,True,True,False,False,False]
 
 
-- abc : char と concatNFA で作った文字列リテラル例
+- abc : char と concatNFA（N項版）で作った文字列リテラル例
 
 >>> abcAlphabet = ["a","b","c"]
->>> (f1, na)  = char defEnv 'a'
->>> (f2, nb)  = char f1 'b'
->>> (f3, nc)  = char f2 'c'
->>> (f4, nab) = concatNFA f3 na nb abcAlphabet
->>> (f5, nabcSeq) = concatNFA f4 nab nc abcAlphabet
+>>> (f1, na) = char defEnv 'a'
+>>> (f2, nb) = char f1 'b'
+>>> (f3, nc) = char f2 'c'
+>>> (f4, nabcSeq) = concatNFA f3 [na,nb,nc] abcAlphabet
 >>> abcDfa = minimizeDFA (toDFA nabcSeq)
 >>> map (runDFA abcDfa) ["a","b","c","d","","ab","ac","abc"]
 [False,False,False,False,False,False,False,True]
@@ -462,13 +478,14 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 
 - (abc)* : char と concatNFA と closureNFA を組み合わせる例
 
->>> (_, nabcStar) = closureNFA f5 nabcSeq abcAlphabet
+>>> (_, nabcStar) = closureNFA f4 nabcSeq abcAlphabet
 >>> abcStarDfa = minimizeDFA (toDFA nabcStar)
 >>> map (runDFA abcStarDfa) ["", "abc", "abcabc", "abcabcabc", "ab", "abca", "abcabx", "xabc"]
 [True,True,True,True,False,False,False,False]
 
 
-- (-?)[0-9]+ : emptyNFA で「-の省略」を、charsets を2回使って「最初の1桁」と「0回以上の繰り返し」を分けて組み立てる例
+- (-?)[0-9]+ : emptyNFA で「-の省略」を、charsets を2回使って「最初の1桁」と「0回以上の繰り返し」を分けて組み立て、
+  最後に concatNFA（N項版）で「省略可能な-」「最初の1桁」「0回以上の繰り返し」の3つを一度に連接する例
 
 >>> digits = ['0'..'9']
 >>> digitAlphabet = [ [c] | c <- digits ]
@@ -479,8 +496,7 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 >>> (g4, nDigits1) = charsets g3 digits
 >>> (g5, nDigits2) = charsets g4 digits
 >>> (g6, nDigitsStar) = closureNFA g5 nDigits2 numAlphabet
->>> (g7, nDigitsPlus) = concatNFA g6 nDigits1 nDigitsStar numAlphabet
->>> (_, nNum) = concatNFA g7 nOptDash nDigitsPlus numAlphabet
+>>> (_, nNum) = concatNFA g6 [nOptDash, nDigits1, nDigitsStar] numAlphabet
 >>> numDfa = minimizeDFA (toDFA nNum)
 >>> map (runDFA numDfa) ["123", "-123", "0", "-0", "007", "", "-", "12a", "--12", "12-"]
 [True,True,True,True,True,False,False,False,False,False]
