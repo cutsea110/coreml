@@ -556,9 +556,10 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 
 - [a-c]* : charsets と closureNFA を do 記法でつなぐ例
 
+>>> abcAlphabet = ["a","b","c"]
 >>> :{
-let (_, nstar) = runFresh (do { nabc <- charsets "abc" ["a","b","c"]
-                              ; closureNFA nabc ["a","b","c"]
+let (_, nstar) = runFresh (do { nabc <- charsets "abc" abcAlphabet
+                              ; closureNFA nabc abcAlphabet
                               }) defEnv
 :}
 
@@ -569,7 +570,6 @@ let (_, nstar) = runFresh (do { nabc <- charsets "abc" ["a","b","c"]
 
 - abc : char と concatNFA（N項版）を do 記法でつなぐ、文字列リテラル例
 
->>> abcAlphabet = ["a","b","c"]
 >>> :{
 let (e4, nabcSeq) = runFresh (do { na <- char 'a' abcAlphabet
                                  ; nb <- char 'b' abcAlphabet
