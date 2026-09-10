@@ -323,3 +323,23 @@ toDFA nfa@(NFA _ ws d q0 fs)
   where a         = epsilonCl d [q0]
         (qs', d') = subsets nfa ([a], [], [])
         fs'       = [ a' | a' <- qs', fs `hasAnyOf` a' ]
+
+
+newtype Env = Env { getEnv :: Int } deriving (Show, Eq)
+defEnv :: Env
+defEnv = Env 0
+getNext :: Env -> (Int, Env)
+getNext (Env n) = (n, Env (n + 1))
+
+char :: Env -> Char -> (Env, NFA)
+char env c = (env2, NFA [s,e] [sym] [(s,(sym,[e]))] s [e])
+  where
+    sym = [c]
+    (s, env1) = getNext env
+    (e, env2) = getNext env1
+
+charsets :: Env -> [Char] -> (Env, NFA)
+charsets _   []     = error "charsets: empty charsets"
+charsets env (c:cs) = foldl phi (char env c) cs
+  where
+    phi (env0, nfa0@NFA { s = s0 }) ch = let (env1, nfa1@NFA { s = s1 }) = char env0 ch in (env1, choiceNFA nfa0 nfa1 (s0 ++ s1))
