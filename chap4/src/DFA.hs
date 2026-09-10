@@ -548,7 +548,7 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 
 - [a-c] : charsets で作った文字集合例
 
->>> (_, nfa) = runFresh (charsets "abc") defEnv
+>>> (_, nfa) = runFresh (charsets "abc" ["a","b","c"]) defEnv
 >>> dfa = minimizeDFA (toDFA nfa)
 >>> map (runDFA dfa) ["a","b","c","d","","ab","ac"]
 [True,True,True,False,False,False,False]
@@ -557,7 +557,7 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 - [a-c]* : charsets と closureNFA を do 記法でつなぐ例
 
 >>> :{
-let (_, nstar) = runFresh (do { nabc <- charsets "abc"
+let (_, nstar) = runFresh (do { nabc <- charsets "abc" ["a","b","c"]
                               ; closureNFA nabc ["a","b","c"]
                               }) defEnv
 :}
@@ -601,8 +601,8 @@ let (e4, nabcSeq) = runFresh (do { na <- char 'a' abcAlphabet
 let (_, nNum) = runFresh (do { nDash <- char '-' numAlphabet
                              ; nEps <- emptyNFA numAlphabet
                              ; nOptDash <- alterNFA nDash nEps numAlphabet
-                             ; nDigits1 <- charsets digits
-                             ; nDigits2 <- charsets digits
+                             ; nDigits1 <- charsets digits numAlphabet
+                             ; nDigits2 <- charsets digits numAlphabet
                              ; nDigitsStar <- closureNFA nDigits2 numAlphabet
                              ; concatNFA [nOptDash, nDigits1, nDigitsStar] numAlphabet
                              }) defEnv
@@ -674,19 +674,23 @@ char c ws = do
     sym = [c]
 
 {-|
-[a-zA-Z] のような文字集合を1つのNFAにする。`alterNFA` を鎖状に繰り返し畳み込むと
-文字数に比例した長さのε遷移の鎖ができてしまい、`epsilonCl` の不動点計算がその鎖を
-1ホップずつしか進められないため文字数が増えると急激に遅くなる。
-そこで新しい開始状態1つから各文字のNFAへε分岐、各文字のNFAの受理状態から
-新しい受理状態1つへε収束、という1段のfan-out/fan-inで組み立てる。
+[a-zA-Z] のような文字集合を1つのNFAにする。`char` と同じ理由で、Σは自分の
+文字だけから決めるのではなく外から明示的に渡す（`charsets "abc"` を他の
+部分と組み合わせて使う正規表現全体のΣは "abc" だけとは限らないため）。
 
->>> (_, NFA nq _ nd nq0 nf) = runFresh (charsets "abc") defEnv
+`alterNFA` を鎖状に繰り返し畳み込むと文字数に比例した長さのε遷移の鎖が
+できてしまい、`epsilonCl` の不動点計算がその鎖を1ホップずつしか進められない
+ため文字数が増えると急激に遅くなる。そこで新しい開始状態1つから各文字の
+NFAへε分岐、各文字のNFAの受理状態から新しい受理状態1つへε収束、という
+1段のfan-out/fan-inで組み立てる。
+
+>>> (_, NFA nq _ nd nq0 nf) = runFresh (charsets "abc" ["a","b","c"]) defEnv
 >>> lang (NFA nq ["a","b","c","d","","ab","ac"] nd nq0 nf)
 ["a","b","c"]
 -}
-charsets :: [Char] -> Fresh NFA
-charsets []  = error "charsets: empty charsets"
-charsets cs = do
+charsets :: [Char] -> [S] -> Fresh NFA
+charsets []  _  = error "charsets: empty charsets"
+charsets cs ws = do
   nfas <- mapM (`char` ws) cs
   p  <- fresh
   qf <- fresh
@@ -700,5 +704,3 @@ charsets cs = do
            , q0    = p
            , f     = [qf]
            }
-  where
-    ws = [ [c] | c <- cs ]
