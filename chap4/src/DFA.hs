@@ -172,7 +172,7 @@ transitions d (p, a) = [qs' | (p', (symbol, qs')) <- d, p' == p && symbol == a]
 >>> lang n2
 ["b"]
 
->>> n12 = concatNFA n1 n2 ["ab"]
+>>> (_, n12) = concatNFA (Env 4) n1 n2 ["ab"]
 >>> lang n12
 ["ab"]
 >>> [x ++ y | x <- lang n1, y <- lang n2] == lang n12
@@ -180,7 +180,7 @@ True
 
 - 選択 (r1|r2) : L(Nr1|r2) = L(Nr1) `union` L(Nr2)
 
->>> nChoice = choiceNFA n1 n2 ["a","b"]
+>>> (_, nChoice) = choiceNFA (Env 4) n1 n2 ["a","b"]
 >>> lang nChoice
 ["a","b"]
 >>> (lang n1 ++ lang n2) == lang nChoice
@@ -188,7 +188,7 @@ True
 
 - 閉包 (r1*) : L(Nr1*) = L(Nr1)* = {""} `union` L(Nr1) `union` L(Nr1)L(Nr1) `union` ...
 
->>> nStar = closureNFA n1 ["", "a", "aa", "aaa"]
+>>> (_, nStar) = closureNFA (Env 2) n1 ["", "a", "aa", "aaa"]
 >>> lang nStar
 ["","a","aa","aaa"]
 -}
@@ -199,75 +199,81 @@ lang (NFA _ ws d q0 fs)
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
 Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε,[q])])}, p, [q])
-を作る。
+を作る。新規状態 p, q は Env から採番する。
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
 >>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
->>> concatNFA n1 n2 ["ab"]
-NFA {q = [0,1,2,3,4,5], s = ["ab"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0])),(1,("",[2])),(3,("",[5]))], q0 = 4, f = [5]}
+>>> concatNFA (Env 4) n1 n2 ["ab"]
+(Env {getEnv = 6},NFA {q = [0,1,2,3,4,5], s = ["ab"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0])),(1,("",[2])),(3,("",[5]))], q0 = 4, f = [5]})
 -}
-concatNFA :: NFA -> NFA -> [S] -> NFA
-concatNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
-  = NFA { q     = qs1 ++ qs2 ++ [p, qf]
-        , s     = ws
-        , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1]))
-                              , (fq1, (epsilon, [p2]))
-                              , (fq2, (epsilon, [qf]))
-                              ]
-        , q0    = p
-        , f     = [qf]
-        }
-  where p  = maximum (qs1 ++ qs2) + 1
-        qf = p + 1
-concatNFA _ _ _ = error "concatNFA: f must be a singleton list"    
+concatNFA :: Env -> NFA -> NFA -> [S] -> (Env, NFA)
+concatNFA env (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
+  = ( env2
+    , NFA { q     = qs1 ++ qs2 ++ [p, qf]
+          , s     = ws
+          , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1]))
+                                , (fq1, (epsilon, [p2]))
+                                , (fq2, (epsilon, [qf]))
+                                ]
+          , q0    = p
+          , f     = [qf]
+          }
+    )
+  where (p,  env1) = getNext env
+        (qf, env2) = getNext env1
+concatNFA _ _ _ _ = error "concatNFA: f must be a singleton list"
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
 Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[(ε,[q])])}, p, [q])
-を作る。
+を作る。新規状態 p, q は Env から採番する。
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
 >>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
->>> choiceNFA n1 n2 ["a","b"]
-NFA {q = [0,1,2,3,4,5], s = ["a","b"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0,2])),(1,("",[5])),(3,("",[5]))], q0 = 4, f = [5]}
+>>> choiceNFA (Env 4) n1 n2 ["a","b"]
+(Env {getEnv = 6},NFA {q = [0,1,2,3,4,5], s = ["a","b"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0,2])),(1,("",[5])),(3,("",[5]))], q0 = 4, f = [5]})
 -}
-choiceNFA :: NFA -> NFA -> [S] -> NFA
-choiceNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
-  = NFA { q     = qs1 ++ qs2 ++ [p, qf]
-        , s     = ws
-        , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1,p2]))
-                              , (fq1, (epsilon, [qf]))
-                              , (fq2, (epsilon, [qf]))
-                              ]
-        , q0    = p
-        , f     = [qf]
-        }
-  where p  = maximum (qs1 ++ qs2) + 1
-        qf = p + 1
-choiceNFA _ _ _ = error "choiceNFA: f must be a singleton list"
+choiceNFA :: Env -> NFA -> NFA -> [S] -> (Env, NFA)
+choiceNFA env (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
+  = ( env2
+    , NFA { q     = qs1 ++ qs2 ++ [p, qf]
+          , s     = ws
+          , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1,p2]))
+                                , (fq1, (epsilon, [qf]))
+                                , (fq2, (epsilon, [qf]))
+                                ]
+          , q0    = p
+          , f     = [qf]
+          }
+    )
+  where (p,  env1) = getNext env
+        (qf, env2) = getNext env1
+choiceNFA _ _ _ _ = error "choiceNFA: f must be a singleton list"
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]) から
 Nr1* = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1,q])]),(q1,[(ε,[p1,q])])}, p, [q])
-を作る。
+を作る。新規状態 p, q は Env から採番する。
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
->>> closureNFA n1 ["", "a", "aa"]
-NFA {q = [0,1,2,3], s = ["","a","aa"], delta = [(0,("a",[1])),(2,("",[0,3])),(1,("",[0,3]))], q0 = 2, f = [3]}
+>>> closureNFA (Env 2) n1 ["", "a", "aa"]
+(Env {getEnv = 4},NFA {q = [0,1,2,3], s = ["","a","aa"], delta = [(0,("a",[1])),(2,("",[0,3])),(1,("",[0,3]))], q0 = 2, f = [3]})
 -}
-closureNFA :: NFA -> [S] -> NFA
-closureNFA (NFA qs1 _ d1 p1 [fq1]) ws
-  = NFA { q     = qs1 ++ [p, qf]
-        , s     = ws
-        , delta = d1 ++ [ (p,   (epsilon, [p1,qf]))
-                        , (fq1, (epsilon, [p1,qf]))
-                        ]
-        , q0    = p
-        , f     = [qf]
-        }
-  where p  = maximum qs1 + 1
-        qf = p + 1
-closureNFA _ _ = error "closureNFA: f must be a singleton list"
+closureNFA :: Env -> NFA -> [S] -> (Env, NFA)
+closureNFA env (NFA qs1 _ d1 p1 [fq1]) ws
+  = ( env2
+    , NFA { q     = qs1 ++ [p, qf]
+          , s     = ws
+          , delta = d1 ++ [ (p,   (epsilon, [p1,qf]))
+                          , (fq1, (epsilon, [p1,qf]))
+                          ]
+          , q0    = p
+          , f     = [qf]
+          }
+    )
+  where (p,  env1) = getNext env
+        (qf, env2) = getNext env1
+closureNFA _ _ _ = error "closureNFA: f must be a singleton list"
 
 deltaDFA :: Delta -> (State, S) -> State
 deltaDFA d (ps, a) = flatten [delta' d (p, a) | p <- ps]
@@ -308,7 +314,7 @@ NFA自体が循環パターンになっている。
 その結果DFA側の遷移表にも状態 [1,0,3] が "a" を読んで自分自身に戻る自己ループが現れる。
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
->>> nStar = closureNFA n1 ["a"]
+>>> (_, nStar) = closureNFA (Env 2) n1 ["a"]
 >>> toDFA nStar
 DFA {q = [[1,0,3],[2,0,3]], s = ["a"], delta = [([1,0,3],[("a",[1,0,3])]),([2,0,3],[("a",[1,0,3])])], q0 = [2], f = [[1,0,3],[2,0,3]]}
 -}
@@ -342,4 +348,5 @@ charsets :: Env -> [Char] -> (Env, NFA)
 charsets _   []     = error "charsets: empty charsets"
 charsets env (c:cs) = foldl phi (char env c) cs
   where
-    phi (env0, nfa0@NFA { s = s0 }) ch = let (env1, nfa1@NFA { s = s1 }) = char env0 ch in (env1, choiceNFA nfa0 nfa1 (s0 ++ s1))
+    phi (env0, nfa0@NFA { s = s0 }) ch = choiceNFA env1 nfa0 nfa1 (s0 ++ s1)
+      where (env1, nfa1@NFA { s = s1 }) = char env0 ch
