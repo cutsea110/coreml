@@ -1,6 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 module DFA where
 
+import Control.Monad (foldM)
 import Data.List (nub, (\\))
 
 -- ユーティリティ
@@ -172,7 +173,7 @@ transitions d (p, a) = [qs' | (p', (symbol, qs')) <- d, p' == p && symbol == a]
 >>> lang n2
 ["b"]
 
->>> (_, n12) = appendNFA (Env 4) n1 n2 ["ab"]
+>>> (_, n12) = runFresh (appendNFA n1 n2 ["ab"]) (Env 4)
 >>> lang n12
 ["ab"]
 >>> [x ++ y | x <- lang n1, y <- lang n2] == lang n12
@@ -180,7 +181,7 @@ True
 
 - 選択 (r1|r2) : L(Nr1|r2) = L(Nr1) `union` L(Nr2)
 
->>> (_, nChoice) = alterNFA (Env 4) n1 n2 ["a","b"]
+>>> (_, nChoice) = runFresh (alterNFA n1 n2 ["a","b"]) (Env 4)
 >>> lang nChoice
 ["a","b"]
 >>> (lang n1 ++ lang n2) == lang nChoice
@@ -188,7 +189,7 @@ True
 
 - 閉包 (r1*) : L(Nr1*) = L(Nr1)* = {""} `union` L(Nr1) `union` L(Nr1)L(Nr1) `union` ...
 
->>> (_, nStar) = closureNFA (Env 2) n1 ["", "a", "aa", "aaa"]
+>>> (_, nStar) = runFresh (closureNFA n1 ["", "a", "aa", "aaa"]) (Env 2)
 >>> lang nStar
 ["","a","aa","aaa"]
 -}
@@ -200,27 +201,29 @@ lang (NFA _ ws d q0 fs)
 何も読まずにε（空文字列）だけを受理するNFA。r? のような「省略可能」を
 alterNFA と組み合わせて表現するときの、もう片方の選択肢として使う。
 
->>> (_, n) = emptyNFA defEnv ["", "a"]
+>>> (_, n) = runFresh (emptyNFA ["", "a"]) defEnv
 >>> lang n
 [""]
 -}
-emptyNFA :: Env -> [S] -> (Env, NFA)
-emptyNFA env ws = (env1, NFA [p] ws [] p [p])
-  where (p, env1) = getNext env
+emptyNFA :: [S] -> Fresh NFA
+emptyNFA ws = do
+  p <- fresh
+  pure (NFA [p] ws [] p [p])
 
 {-|
 何も受理しない（空集合Φの）NFA。開始状態と受理状態を別々にし、間に
 一切遷移を作らないことで表現する。choiceNFA（N項の選択）の空リストの
 場合に、選択の単位元（Φ ∪ L = L）として使う。
 
->>> (_, n) = noneNFA defEnv ["", "a"]
+>>> (_, n) = runFresh (noneNFA ["", "a"]) defEnv
 >>> lang n
 []
 -}
-noneNFA :: Env -> [S] -> (Env, NFA)
-noneNFA env ws = (env2, NFA [p,q] ws [] p [q])
-  where (p, env1) = getNext env
-        (q, env2) = getNext env1
+noneNFA :: [S] -> Fresh NFA
+noneNFA ws = do
+  p <- fresh
+  q <- fresh
+  pure (NFA [p,q] ws [] p [q])
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
@@ -230,25 +233,23 @@ appendNFA という名前にしている（N個まとめて連接するのは co
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
 >>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
->>> appendNFA (Env 4) n1 n2 ["ab"]
+>>> runFresh (appendNFA n1 n2 ["ab"]) (Env 4)
 (Env {getEnv = 6},NFA {q = [0,1,2,3,4,5], s = ["ab"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0])),(1,("",[2])),(3,("",[5]))], q0 = 4, f = [5]})
 -}
-appendNFA :: Env -> NFA -> NFA -> [S] -> (Env, NFA)
-appendNFA env (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
-  = ( env2
-    , NFA { q     = qs1 ++ qs2 ++ [p, qf]
-          , s     = ws
-          , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1]))
-                                , (fq1, (epsilon, [p2]))
-                                , (fq2, (epsilon, [qf]))
-                                ]
-          , q0    = p
-          , f     = [qf]
-          }
-    )
-  where (p,  env1) = getNext env
-        (qf, env2) = getNext env1
-appendNFA _ _ _ _ = error "appendNFA: f must be a singleton list"
+appendNFA :: NFA -> NFA -> [S] -> Fresh NFA
+appendNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws = do
+  p  <- fresh
+  qf <- fresh
+  pure NFA { q     = qs1 ++ qs2 ++ [p, qf]
+           , s     = ws
+           , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1]))
+                                 , (fq1, (epsilon, [p2]))
+                                 , (fq2, (epsilon, [qf]))
+                                 ]
+           , q0    = p
+           , f     = [qf]
+           }
+appendNFA _ _ _ = error "appendNFA: f must be a singleton list"
 
 {-|
 NFA のリストを1つに連接する。`concat = foldr (++) []` に倣い、
@@ -257,14 +258,13 @@ appendNFA を畳み込んで作る。空リストは連接の単位元である 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
 >>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
 >>> n3 = NFA [4,5] ["c"] [(4,("c",[5]))] 4 [5]
->>> (_, n123) = concatNFA (Env 6) [n1,n2,n3] ["abc"]
+>>> (_, n123) = runFresh (concatNFA [n1,n2,n3] ["abc"]) (Env 6)
 >>> lang n123
 ["abc"]
 -}
-concatNFA :: Env -> [NFA] -> [S] -> (Env, NFA)
-concatNFA env []       ws = emptyNFA env ws
-concatNFA env (n:nfas) ws = foldl step (env, n) nfas
-  where step (e, acc) nfa = appendNFA e acc nfa ws
+concatNFA :: [NFA] -> [S] -> Fresh NFA
+concatNFA []       ws = emptyNFA ws
+concatNFA (n:nfas) ws = foldM (\acc nfa -> appendNFA acc nfa ws) n nfas
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
@@ -274,25 +274,23 @@ Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
 >>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
->>> alterNFA (Env 4) n1 n2 ["a","b"]
+>>> runFresh (alterNFA n1 n2 ["a","b"]) (Env 4)
 (Env {getEnv = 6},NFA {q = [0,1,2,3,4,5], s = ["a","b"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0,2])),(1,("",[5])),(3,("",[5]))], q0 = 4, f = [5]})
 -}
-alterNFA :: Env -> NFA -> NFA -> [S] -> (Env, NFA)
-alterNFA env (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
-  = ( env2
-    , NFA { q     = qs1 ++ qs2 ++ [p, qf]
-          , s     = ws
-          , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1,p2]))
-                                , (fq1, (epsilon, [qf]))
-                                , (fq2, (epsilon, [qf]))
-                                ]
-          , q0    = p
-          , f     = [qf]
-          }
-    )
-  where (p,  env1) = getNext env
-        (qf, env2) = getNext env1
-alterNFA _ _ _ _ = error "alterNFA: f must be a singleton list"
+alterNFA :: NFA -> NFA -> [S] -> Fresh NFA
+alterNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws = do
+  p  <- fresh
+  qf <- fresh
+  pure NFA { q     = qs1 ++ qs2 ++ [p, qf]
+           , s     = ws
+           , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1,p2]))
+                                 , (fq1, (epsilon, [qf]))
+                                 , (fq2, (epsilon, [qf]))
+                                 ]
+           , q0    = p
+           , f     = [qf]
+           }
+alterNFA _ _ _ = error "alterNFA: f must be a singleton list"
 
 {-|
 NFA のリストを1つの選択にまとめる。空リストは選択の単位元である
@@ -301,14 +299,13 @@ NFA のリストを1つの選択にまとめる。空リストは選択の単位
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
 >>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
 >>> n3 = NFA [4,5] ["c"] [(4,("c",[5]))] 4 [5]
->>> (_, nChoice) = choiceNFA (Env 6) [n1,n2,n3] ["a","b","c"]
+>>> (_, nChoice) = runFresh (choiceNFA [n1,n2,n3] ["a","b","c"]) (Env 6)
 >>> lang nChoice
 ["a","b","c"]
 -}
-choiceNFA :: Env -> [NFA] -> [S] -> (Env, NFA)
-choiceNFA env []       ws = noneNFA env ws
-choiceNFA env (n:nfas) ws = foldl step (env, n) nfas
-  where step (e, acc) nfa = alterNFA e acc nfa ws
+choiceNFA :: [NFA] -> [S] -> Fresh NFA
+choiceNFA []       ws = noneNFA ws
+choiceNFA (n:nfas) ws = foldM (\acc nfa -> alterNFA acc nfa ws) n nfas
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]) から
@@ -316,24 +313,22 @@ Nr1* = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1,q])]),(q1,[(ε,[p1,q])])}, p, [q])
 を作る。新規状態 p, q は Env から採番する。
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
->>> closureNFA (Env 2) n1 ["", "a", "aa"]
+>>> runFresh (closureNFA n1 ["", "a", "aa"]) (Env 2)
 (Env {getEnv = 4},NFA {q = [0,1,2,3], s = ["","a","aa"], delta = [(0,("a",[1])),(2,("",[0,3])),(1,("",[0,3]))], q0 = 2, f = [3]})
 -}
-closureNFA :: Env -> NFA -> [S] -> (Env, NFA)
-closureNFA env (NFA qs1 _ d1 p1 [fq1]) ws
-  = ( env2
-    , NFA { q     = qs1 ++ [p, qf]
-          , s     = ws
-          , delta = d1 ++ [ (p,   (epsilon, [p1,qf]))
-                          , (fq1, (epsilon, [p1,qf]))
-                          ]
-          , q0    = p
-          , f     = [qf]
-          }
-    )
-  where (p,  env1) = getNext env
-        (qf, env2) = getNext env1
-closureNFA _ _ _ = error "closureNFA: f must be a singleton list"
+closureNFA :: NFA -> [S] -> Fresh NFA
+closureNFA (NFA qs1 _ d1 p1 [fq1]) ws = do
+  p  <- fresh
+  qf <- fresh
+  pure NFA { q     = qs1 ++ [p, qf]
+           , s     = ws
+           , delta = d1 ++ [ (p,   (epsilon, [p1,qf]))
+                           , (fq1, (epsilon, [p1,qf]))
+                           ]
+           , q0    = p
+           , f     = [qf]
+           }
+closureNFA _ _ = error "closureNFA: f must be a singleton list"
 
 deltaDFA :: Delta -> (State, S) -> State
 deltaDFA d (ps, a) = flatten [delta' d (p, a) | p <- ps]
@@ -384,7 +379,7 @@ NFA自体が循環パターンになっている。
 その結果DFA側の遷移表にも状態 [1,0,3] が "a" を読んで自分自身に戻る自己ループが現れる。
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
->>> (_, nStar) = closureNFA (Env 2) n1 ["a"]
+>>> (_, nStar) = runFresh (closureNFA n1 ["a"]) (Env 2)
 >>> toDFA nStar
 DFA {q = [[1,0,3],[2,0,3]], s = ["a"], delta = [([1,0,3],[("a",[1,0,3])]),([2,0,3],[("a",[1,0,3])])], q0 = [2,0,3], f = [[1,0,3],[2,0,3]]}
 
@@ -480,54 +475,47 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 
 - [a-c] : charsets で作った文字集合例
 
->>> (_, nfa) = charsets defEnv "abc"
+>>> (_, nfa) = runFresh (charsets "abc") defEnv
 >>> dfa = minimizeDFA (toDFA nfa)
 >>> map (runDFA dfa) ["a","b","c","d","","ab","ac"]
 [True,True,True,False,False,False,False]
 
 
-- [a-c]* : charsets と closureNFA を組み合わせる例
+- [a-c]* : charsets と closureNFA を do 記法でつなぐ例
 
->>> (e1, nabc) = charsets defEnv "abc"
->>> (_, nstar) = closureNFA e1 nabc ["a","b","c"]
+>>> starBuild = do { nabc <- charsets "abc"; closureNFA nabc ["a","b","c"] }
+>>> (_, nstar) = runFresh starBuild defEnv
 >>> starDfa = minimizeDFA (toDFA nstar)
 >>> map (runDFA starDfa) ["", "a", "abc", "aabbcc", "cba", "aaaa", "d", "abcd", "ab1"]
 [True,True,True,True,True,True,False,False,False]
 
 
-- abc : char と concatNFA（N項版）で作った文字列リテラル例
+- abc : char と concatNFA（N項版）を do 記法でつなぐ、文字列リテラル例
 
 >>> abcAlphabet = ["a","b","c"]
->>> (f1, na) = char defEnv 'a'
->>> (f2, nb) = char f1 'b'
->>> (f3, nc) = char f2 'c'
->>> (f4, nabcSeq) = concatNFA f3 [na,nb,nc] abcAlphabet
+>>> abcBuild = do { na <- char 'a'; nb <- char 'b'; nc <- char 'c'; concatNFA [na,nb,nc] abcAlphabet }
+>>> (e4, nabcSeq) = runFresh abcBuild defEnv
 >>> abcDfa = minimizeDFA (toDFA nabcSeq)
 >>> map (runDFA abcDfa) ["a","b","c","d","","ab","ac","abc"]
 [False,False,False,False,False,False,False,True]
 
 
-- (abc)* : char と concatNFA と closureNFA を組み合わせる例
+- (abc)* : 上の nabcSeq に closureNFA をかぶせるだけの例
 
->>> (_, nabcStar) = closureNFA f4 nabcSeq abcAlphabet
+>>> (_, nabcStar) = runFresh (closureNFA nabcSeq abcAlphabet) e4
 >>> abcStarDfa = minimizeDFA (toDFA nabcStar)
 >>> map (runDFA abcStarDfa) ["", "abc", "abcabc", "abcabcabc", "ab", "abca", "abcabx", "xabc"]
 [True,True,True,True,False,False,False,False]
 
 
 - (-?)[0-9]+ : emptyNFA で「-の省略」を、charsets を2回使って「最初の1桁」と「0回以上の繰り返し」を分けて組み立て、
-  最後に concatNFA（N項版）で「省略可能な-」「最初の1桁」「0回以上の繰り返し」の3つを一度に連接する例
+  最後に concatNFA（N項版）で「省略可能な-」「最初の1桁」「0回以上の繰り返し」の3つを一度に連接する、まとめて1つの do 記法で書く例
 
 >>> digits = ['0'..'9']
 >>> digitAlphabet = [ [c] | c <- digits ]
 >>> numAlphabet = "-" : digitAlphabet
->>> (g1, nDash) = char defEnv '-'
->>> (g2, nEps) = emptyNFA g1 numAlphabet
->>> (g3, nOptDash) = alterNFA g2 nDash nEps numAlphabet
->>> (g4, nDigits1) = charsets g3 digits
->>> (g5, nDigits2) = charsets g4 digits
->>> (g6, nDigitsStar) = closureNFA g5 nDigits2 numAlphabet
->>> (_, nNum) = concatNFA g6 [nOptDash, nDigits1, nDigitsStar] numAlphabet
+>>> numBuild = do { nDash <- char '-'; nEps <- emptyNFA numAlphabet; nOptDash <- alterNFA nDash nEps numAlphabet; nDigits1 <- charsets digits; nDigits2 <- charsets digits; nDigitsStar <- closureNFA nDigits2 numAlphabet; concatNFA [nOptDash, nDigits1, nDigitsStar] numAlphabet }
+>>> (_, nNum) = runFresh numBuild defEnv
 >>> numDfa = minimizeDFA (toDFA nNum)
 >>> map (runDFA numDfa) ["123", "-123", "0", "-0", "007", "", "-", "12a", "--12", "12-"]
 [True,True,True,True,True,False,False,False,False,False]
@@ -545,12 +533,44 @@ defEnv = Env 0
 getNext :: Env -> (Int, Env)
 getNext (Env n) = (n, Env (n + 1))
 
-char :: Env -> Char -> (Env, NFA)
-char env c = (env2, NFA [s,e] [sym] [(s,(sym,[e]))] s [e])
+{-|
+Env を持ち回る小さな状態モナド。`char`/`charsets`/`appendNFA`/... はどれも
+「必要なだけ新しい状態番号を採番しながらNFAを組み立てる」計算なので、
+Env を明示的な引数として毎回受け渡す代わりにこの型でラップし、
+`do` 記法で書けるようにする。
+
+>>> runFresh (pure 'x') defEnv
+(Env {getEnv = 0},'x')
+>>> runFresh (do { a <- fresh; b <- fresh; pure (a,b) }) defEnv
+(Env {getEnv = 2},(0,1))
+-}
+newtype Fresh a = Fresh { runFresh :: Env -> (Env, a) }
+
+instance Functor Fresh where
+  fmap f (Fresh g) = Fresh $ \env -> let (env', a) = g env in (env', f a)
+
+instance Applicative Fresh where
+  pure a = Fresh $ \env -> (env, a)
+  Fresh mf <*> Fresh ma = Fresh $ \env ->
+    let (env1, f) = mf env
+        (env2, a) = ma env1
+    in (env2, f a)
+
+instance Monad Fresh where
+  Fresh ma >>= f = Fresh $ \env ->
+    let (env1, a) = ma env
+    in runFresh (f a) env1
+
+fresh :: Fresh Q
+fresh = Fresh (\env -> let (n, env') = getNext env in (env', n))
+
+char :: Char -> Fresh NFA
+char c = do
+  s <- fresh
+  e <- fresh
+  pure (NFA [s,e] [sym] [(s,(sym,[e]))] s [e])
   where
     sym = [c]
-    (s, env1) = getNext env
-    (e, env2) = getNext env1
 
 {-|
 [a-zA-Z] のような文字集合を1つのNFAにする。`alterNFA` を鎖状に繰り返し畳み込むと
@@ -559,28 +579,25 @@ char env c = (env2, NFA [s,e] [sym] [(s,(sym,[e]))] s [e])
 そこで新しい開始状態1つから各文字のNFAへε分岐、各文字のNFAの受理状態から
 新しい受理状態1つへε収束、という1段のfan-out/fan-inで組み立てる。
 
->>> (_, NFA nq _ nd nq0 nf) = charsets defEnv "abc"
+>>> (_, NFA nq _ nd nq0 nf) = runFresh (charsets "abc") defEnv
 >>> lang (NFA nq ["a","b","c","d","","ab","ac"] nd nq0 nf)
 ["a","b","c"]
 -}
-charsets :: Env -> [Char] -> (Env, NFA)
-charsets _   []  = error "charsets: empty charsets"
-charsets env cs
-  = ( env2
-    , NFA { q     = concat qss ++ [p, qf]
-          , s     = ws
-          , delta = concat dss ++ (p, (epsilon, starts)) : [ (fq, (epsilon, [qf])) | fq <- fins ]
-          , q0    = p
-          , f     = [qf]
-          }
-    )
+charsets :: [Char] -> Fresh NFA
+charsets []  = error "charsets: empty charsets"
+charsets cs = do
+  nfas <- mapM char cs
+  p  <- fresh
+  qf <- fresh
+  let qss    = [ qsI | NFA qsI _  _  _  _    <- nfas ]
+      dss    = [ dI  | NFA _   _  dI _  _    <- nfas ]
+      starts = [ p0  | NFA _   _  _  p0 _    <- nfas ]
+      fins   = [ fq  | NFA _   _  _  _  [fq] <- nfas ]
+  pure NFA { q     = concat qss ++ [p, qf]
+           , s     = ws
+           , delta = concat dss ++ (p, (epsilon, starts)) : [ (fq, (epsilon, [qf])) | fq <- fins ]
+           , q0    = p
+           , f     = [qf]
+           }
   where
-    ws               = [ [c] | c <- cs ]
-    (env1, nfas)     = foldl step (env, []) cs
-    step (e, acc) ch = let (e', n) = char e ch in (e', acc ++ [n])
-    qss              = [ qsI | NFA qsI _  _  _  _    <- nfas ]
-    dss              = [ dI  | NFA _   _  dI _  _    <- nfas ]
-    starts           = [ p0  | NFA _   _  _  p0 _    <- nfas ]
-    fins             = [ fq  | NFA _   _  _  _  [fq] <- nfas ]
-    (p,  envA)       = getNext env1
-    (qf, env2)       = getNext envA
+    ws = [ [c] | c <- cs ]
