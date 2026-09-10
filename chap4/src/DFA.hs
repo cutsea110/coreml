@@ -235,10 +235,10 @@ L(Nr1r2) = L(Nr1)L(Nr2) の確認（AB = [xy | x <- A, y <- B]）:
 
 >>> :{
 let (_, ok) = runFresh (do { na <- char 'a'
-                            ; nb <- char 'b'
-                            ; nab <- appendNFA na nb ["ab"]
-                            ; pure ([x++y | x <- lang na, y <- lang nb] == lang nab)
-                            }) defEnv
+                           ; nb <- char 'b'
+                           ; nab <- appendNFA na nb ["ab"]
+                           ; pure ([x++y | x <- lang na, y <- lang nb] == lang nab)
+                           }) defEnv
 :}
 
 >>> ok
@@ -265,7 +265,15 @@ appendNFA を畳み込んで作る。空リストは連接の単位元である 
 
 L(Nr1r2...rn) = L(Nr1)L(Nr2)...L(Nrn) の確認:
 
->>> (_, ok) = runFresh (do { na <- char 'a'; nb <- char 'b'; nc <- char 'c'; nabc <- concatNFA [na,nb,nc] ["abc"]; pure (map concat (sequence [lang na, lang nb, lang nc]) == lang nabc) }) defEnv
+>>> :{
+let (_, ok) = runFresh (do { na <- char 'a'
+                           ; nb <- char 'b'
+                           ; nc <- char 'c'
+                           ; nabc <- concatNFA [na,nb,nc] ["abc"]
+                           ; pure (map concat (sequence [lang na, lang nb, lang nc]) == lang nabc)
+                           }) defEnv
+:}
+
 >>> ok
 True
 -}
@@ -281,7 +289,14 @@ Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[
 
 L(Nr1|r2) = L(Nr1) ∪ L(Nr2) の確認:
 
->>> (_, ok) = runFresh (do { na <- char 'a'; nb <- char 'b'; nAlt <- alterNFA na nb ["a","b"]; pure ((lang na ++ lang nb) == lang nAlt) }) defEnv
+>>> :{
+let (_, ok) = runFresh (do { na <- char 'a'
+                           ; nb <- char 'b'
+                           ; nAlt <- alterNFA na nb ["a","b"]
+                           ; pure ((lang na ++ lang nb) == lang nAlt)
+                           }) defEnv
+:}
+
 >>> ok
 True
 -}
@@ -306,7 +321,15 @@ NFA のリストを1つの選択にまとめる。空リストは選択の単位
 
 L(Nr1|r2|...|rn) = L(Nr1) ∪ L(Nr2) ∪ ... ∪ L(Nrn) の確認:
 
->>> (_, ok) = runFresh (do { na <- char 'a'; nb <- char 'b'; nc <- char 'c'; nChoice <- choiceNFA [na,nb,nc] ["a","b","c"]; pure (concatMap lang [na,nb,nc] == lang nChoice) }) defEnv
+>>> :{
+let (_, ok) = runFresh (do { na <- char 'a'
+                           ; nb <- char 'b'
+                           ; nc <- char 'c'
+                           ; nChoice <- choiceNFA [na,nb,nc] ["a","b","c"]
+                           ; pure (concatMap lang [na,nb,nc] == lang nChoice)
+                           }) defEnv
+:}
+
 >>> ok
 True
 -}
@@ -322,7 +345,21 @@ Nr1* = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1,q])]),(q1,[(ε,[p1,q])])}, p, [q])
 L(Nr1*) = L(Nr1)* = {""} ∪ L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ... の確認
 （"","a","aa","aaa" の4段だけ）:
 
->>> (_, ok) = runFresh (do { na <- char 'a'; nStar <- closureNFA na ["", "a", "aa", "aaa"]; pure (([""] ++ lang na ++ [x++y | x <- lang na, y <- lang na] ++ [x++y++z | x <- lang na, y <- lang na, z <- lang na]) == lang nStar) }) defEnv
+>>> :{
+let (_, ok) = runFresh (do { na <- char 'a'
+                           ; nStar <- closureNFA na ["", "a", "aa", "aaa"]
+                           ; pure (([""] ++
+                                    lang na ++
+                                    [x++y
+                                    | x <- lang na
+                                    , y <- lang na] ++
+                                    [x++y++z
+                                    | x <- lang na
+                                    , y <- lang na
+                                    , z <- lang na]) == lang nStar)
+                           }) defEnv
+:}
+
 >>> ok
 True
 -}
