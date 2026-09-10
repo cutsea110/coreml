@@ -198,6 +198,20 @@ lang (NFA _ ws d q0 fs)
   = [w | w <- ws, fs `hasAnyOf` delta' d (q0, w)]
 
 {-|
+NFA が特定の1つの文字列を受理するかどうかを判定する。`lang` はNFA自身が持つ
+アルファベットΣ（`s`フィールド）に含まれる候補しか調べられないので、
+Σそのものとは無関係な（例えば連接後の複数文字の）文字列を直接テストしたいときに使う。
+
+>>> (_, n) = runFresh (char 'a' ["a","b"]) defEnv
+>>> accepts n "a"
+True
+>>> accepts n "b"
+False
+-}
+accepts :: NFA -> S -> Bool
+accepts (NFA _ _ d q0 fs) w = fs `hasAnyOf` delta' d (q0, w)
+
+{-|
 何も読まずにε（空文字列）だけを受理するNFA。r? のような「省略可能」を
 alterNFA と組み合わせて表現するときの、もう片方の選択肢として使う。
 
@@ -231,13 +245,16 @@ Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε
 を作る。新規状態 p, q は Env から採番する。2項の連接なので `(++)` に倣って
 appendNFA という名前にしている（N個まとめて連接するのは concatNFA、`concat` 相当）。
 
-L(Nr1r2) = L(Nr1)L(Nr2) の確認（AB = [xy | x <- A, y <- B]）:
+na, nb は同じΣ（ここでは ["a","b"]）を共有するNFAとして作る。連接した nab も
+このΣをそのまま引き継ぐので、"ab" のような複数文字の文字列はもはやΣの要素では
+ない（Σは1記号ずつの集合）。そのため lang ではなく、任意の文字列を直接判定できる
+accepts で L(Nr1r2) = L(Nr1)L(Nr2)（AB = [xy | x <- A, y <- B]）を確認する:
 
 >>> :{
-let (_, ok) = runFresh (do { na <- char 'a'
-                           ; nb <- char 'b'
-                           ; nab <- appendNFA na nb ["ab"]
-                           ; pure ([x++y | x <- lang na, y <- lang nb] == lang nab)
+let (_, ok) = runFresh (do { na <- char 'a' ["a","b"]
+                           ; nb <- char 'b' ["a","b"]
+                           ; nab <- appendNFA na nb ["a","b"]
+                           ; pure (all (accepts nab) [x++y | x <- lang na, y <- lang nb])
                            }) defEnv
 :}
 
@@ -263,14 +280,15 @@ appendNFA _ _ _ = error "appendNFA: f must be a singleton list"
 NFA のリストを1つに連接する。`concat = foldr (++) []` に倣い、
 appendNFA を畳み込んで作る。空リストは連接の単位元である emptyNFA（εだけを受理）になる。
 
-L(Nr1r2...rn) = L(Nr1)L(Nr2)...L(Nrn) の確認:
+na, nb, nc は同じΣ（["a","b","c"]）を共有するNFAとして作る。appendNFA と同じ理由で
+lang ではなく accepts で L(Nr1r2...rn) = L(Nr1)L(Nr2)...L(Nrn) を確認する:
 
 >>> :{
-let (_, ok) = runFresh (do { na <- char 'a'
-                           ; nb <- char 'b'
-                           ; nc <- char 'c'
-                           ; nabc <- concatNFA [na,nb,nc] ["abc"]
-                           ; pure (map concat (sequence [lang na, lang nb, lang nc]) == lang nabc)
+let (_, ok) = runFresh (do { na <- char 'a' ["a","b","c"]
+                           ; nb <- char 'b' ["a","b","c"]
+                           ; nc <- char 'c' ["a","b","c"]
+                           ; nabc <- concatNFA [na,nb,nc] ["a","b","c"]
+                           ; pure (all (accepts nabc) (map concat (sequence [lang na, lang nb, lang nc])))
                            }) defEnv
 :}
 
@@ -290,8 +308,8 @@ Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[
 L(Nr1|r2) = L(Nr1) ∪ L(Nr2) の確認:
 
 >>> :{
-let (_, ok) = runFresh (do { na <- char 'a'
-                           ; nb <- char 'b'
+let (_, ok) = runFresh (do { na <- char 'a' ["a","b"]
+                           ; nb <- char 'b' ["a","b"]
                            ; nAlt <- alterNFA na nb ["a","b"]
                            ; pure ((lang na ++ lang nb) == lang nAlt)
                            }) defEnv
@@ -322,9 +340,9 @@ NFA のリストを1つの選択にまとめる。空リストは選択の単位
 L(Nr1|r2|...|rn) = L(Nr1) ∪ L(Nr2) ∪ ... ∪ L(Nrn) の確認:
 
 >>> :{
-let (_, ok) = runFresh (do { na <- char 'a'
-                           ; nb <- char 'b'
-                           ; nc <- char 'c'
+let (_, ok) = runFresh (do { na <- char 'a' ["a","b","c"]
+                           ; nb <- char 'b' ["a","b","c"]
+                           ; nc <- char 'c' ["a","b","c"]
                            ; nChoice <- choiceNFA [na,nb,nc] ["a","b","c"]
                            ; pure (concatMap lang [na,nb,nc] == lang nChoice)
                            }) defEnv
@@ -342,13 +360,15 @@ Nr1 = (Q1,Σ,δ1,p1,[q1]) から
 Nr1* = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1,q])]),(q1,[(ε,[p1,q])])}, p, [q])
 を作る。新規状態 p, q は Env から採番する。
 
-L(Nr1*) = L(Nr1)* = {""} ∪ L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ... の確認
+na, nStar も同じΣ（["a"]）を共有する。閉包が作る文字列は長さが揃わないので、
+appendNFA/concatNFA と同じ理由で lang ではなく accepts を使い、
+L(Nr1*) = L(Nr1)* = {""} ∪ L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ... を確認する
 （"","a","aa","aaa" の4段だけ）:
 
 >>> :{
-let (_, ok) = runFresh (do { na <- char 'a'
-                           ; nStar <- closureNFA na ["", "a", "aa", "aaa"]
-                           ; pure (([""] ++
+let (_, ok) = runFresh (do { na <- char 'a' ["a"]
+                           ; nStar <- closureNFA na ["a"]
+                           ; let predicted = [""] ++
                                     lang na ++
                                     [x++y
                                     | x <- lang na
@@ -356,7 +376,8 @@ let (_, ok) = runFresh (do { na <- char 'a'
                                     [x++y++z
                                     | x <- lang na
                                     , y <- lang na
-                                    , z <- lang na]) == lang nStar)
+                                    , z <- lang na]
+                           ; pure (all (accepts nStar) predicted)
                            }) defEnv
 :}
 
@@ -540,7 +561,7 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 - abc : char と concatNFA（N項版）を do 記法でつなぐ、文字列リテラル例
 
 >>> abcAlphabet = ["a","b","c"]
->>> abcBuild = do { na <- char 'a'; nb <- char 'b'; nc <- char 'c'; concatNFA [na,nb,nc] abcAlphabet }
+>>> abcBuild = do { na <- char 'a' abcAlphabet; nb <- char 'b' abcAlphabet; nc <- char 'c' abcAlphabet; concatNFA [na,nb,nc] abcAlphabet }
 >>> (e4, nabcSeq) = runFresh abcBuild defEnv
 >>> abcDfa = minimizeDFA (toDFA nabcSeq)
 >>> map (runDFA abcDfa) ["a","b","c","d","","ab","ac","abc"]
@@ -561,7 +582,7 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 >>> digits = ['0'..'9']
 >>> digitAlphabet = [ [c] | c <- digits ]
 >>> numAlphabet = "-" : digitAlphabet
->>> numBuild = do { nDash <- char '-'; nEps <- emptyNFA numAlphabet; nOptDash <- alterNFA nDash nEps numAlphabet; nDigits1 <- charsets digits; nDigits2 <- charsets digits; nDigitsStar <- closureNFA nDigits2 numAlphabet; concatNFA [nOptDash, nDigits1, nDigitsStar] numAlphabet }
+>>> numBuild = do { nDash <- char '-' numAlphabet; nEps <- emptyNFA numAlphabet; nOptDash <- alterNFA nDash nEps numAlphabet; nDigits1 <- charsets digits; nDigits2 <- charsets digits; nDigitsStar <- closureNFA nDigits2 numAlphabet; concatNFA [nOptDash, nDigits1, nDigitsStar] numAlphabet }
 >>> (_, nNum) = runFresh numBuild defEnv
 >>> numDfa = minimizeDFA (toDFA nNum)
 >>> map (runDFA numDfa) ["123", "-123", "0", "-0", "007", "", "-", "12a", "--12", "12-"]
@@ -611,11 +632,20 @@ instance Monad Fresh where
 fresh :: Fresh Q
 fresh = Fresh (\env -> let (n, env') = getNext env in (env', n))
 
-char :: Char -> Fresh NFA
-char c = do
+{-|
+1文字だけを読むNFAを作る。`ws` は組み立てようとしている正規表現全体で
+共有するアルファベットΣを渡す（このNFA自身が読む記号がその1文字だけでも、
+後で他のNFAと連接・選択する際に同じΣを前提にする必要があるため）。
+
+>>> (_, n) = runFresh (char 'a' ["a","b"]) defEnv
+>>> lang n
+["a"]
+-}
+char :: Char -> [S] -> Fresh NFA
+char c ws = do
   s <- fresh
   e <- fresh
-  pure (NFA [s,e] [sym] [(s,(sym,[e]))] s [e])
+  pure (NFA [s,e] ws [(s,(sym,[e]))] s [e])
   where
     sym = [c]
 
@@ -633,7 +663,7 @@ char c = do
 charsets :: [Char] -> Fresh NFA
 charsets []  = error "charsets: empty charsets"
 charsets cs = do
-  nfas <- mapM char cs
+  nfas <- mapM (`char` ws) cs
   p  <- fresh
   qf <- fresh
   let qss    = [ qsI | NFA qsI _  _  _  _    <- nfas ]
