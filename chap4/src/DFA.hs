@@ -231,10 +231,8 @@ Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε
 を作る。新規状態 p, q は Env から採番する。2項の連接なので `(++)` に倣って
 appendNFA という名前にしている（N個まとめて連接するのは concatNFA、`concat` 相当）。
 
->>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
->>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
->>> runFresh (appendNFA n1 n2 ["ab"]) (Env 4)
-(Env {getEnv = 6},NFA {q = [0,1,2,3,4,5], s = ["ab"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0])),(1,("",[2])),(3,("",[5]))], q0 = 4, f = [5]})
+>>> runFresh (do { na <- char 'a'; nb <- char 'b'; appendNFA na nb ["a","b"] }) defEnv
+(Env {getEnv = 6},NFA {q = [0,1,2,3,4,5], s = ["a","b"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0])),(1,("",[2])),(3,("",[5]))], q0 = 4, f = [5]})
 -}
 appendNFA :: NFA -> NFA -> [S] -> Fresh NFA
 appendNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws = do
@@ -255,11 +253,8 @@ appendNFA _ _ _ = error "appendNFA: f must be a singleton list"
 NFA のリストを1つに連接する。`concat = foldr (++) []` に倣い、
 appendNFA を畳み込んで作る。空リストは連接の単位元である emptyNFA（εだけを受理）になる。
 
->>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
->>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
->>> n3 = NFA [4,5] ["c"] [(4,("c",[5]))] 4 [5]
->>> (_, n123) = runFresh (concatNFA [n1,n2,n3] ["abc"]) (Env 6)
->>> lang n123
+>>> (_, r) = runFresh (do { na <- char 'a'; nb <- char 'b'; nc <- char 'c'; nabc <- concatNFA [na,nb,nc] ["abc"]; pure (lang nabc) }) defEnv
+>>> r
 ["abc"]
 -}
 concatNFA :: [NFA] -> [S] -> Fresh NFA
@@ -272,9 +267,7 @@ Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[
 を作る。新規状態 p, q は Env から採番する。2項の選択なので alterNFA という名前にしている
 （N個まとめて選択するのは choiceNFA）。
 
->>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
->>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
->>> runFresh (alterNFA n1 n2 ["a","b"]) (Env 4)
+>>> runFresh (do { na <- char 'a'; nb <- char 'b'; alterNFA na nb ["a","b"] }) defEnv
 (Env {getEnv = 6},NFA {q = [0,1,2,3,4,5], s = ["a","b"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0,2])),(1,("",[5])),(3,("",[5]))], q0 = 4, f = [5]})
 -}
 alterNFA :: NFA -> NFA -> [S] -> Fresh NFA
@@ -296,11 +289,8 @@ alterNFA _ _ _ = error "alterNFA: f must be a singleton list"
 NFA のリストを1つの選択にまとめる。空リストは選択の単位元である
 「何も受理しないNFA」（noneNFA）になる。
 
->>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
->>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
->>> n3 = NFA [4,5] ["c"] [(4,("c",[5]))] 4 [5]
->>> (_, nChoice) = runFresh (choiceNFA [n1,n2,n3] ["a","b","c"]) (Env 6)
->>> lang nChoice
+>>> (_, r) = runFresh (do { na <- char 'a'; nb <- char 'b'; nc <- char 'c'; nChoice <- choiceNFA [na,nb,nc] ["a","b","c"]; pure (lang nChoice) }) defEnv
+>>> r
 ["a","b","c"]
 -}
 choiceNFA :: [NFA] -> [S] -> Fresh NFA
@@ -312,8 +302,7 @@ Nr1 = (Q1,Σ,δ1,p1,[q1]) から
 Nr1* = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1,q])]),(q1,[(ε,[p1,q])])}, p, [q])
 を作る。新規状態 p, q は Env から採番する。
 
->>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
->>> runFresh (closureNFA n1 ["", "a", "aa"]) (Env 2)
+>>> runFresh (do { na <- char 'a'; closureNFA na ["", "a", "aa"] }) defEnv
 (Env {getEnv = 4},NFA {q = [0,1,2,3], s = ["","a","aa"], delta = [(0,("a",[1])),(2,("",[0,3])),(1,("",[0,3]))], q0 = 2, f = [3]})
 -}
 closureNFA :: NFA -> [S] -> Fresh NFA
