@@ -256,9 +256,11 @@ appendNFA _ _ _ = error "appendNFA: f must be a singleton list"
 NFA のリストを1つに連接する。`concat = foldr (++) []` に倣い、
 appendNFA を畳み込んで作る。空リストは連接の単位元である emptyNFA（εだけを受理）になる。
 
->>> (_, r) = runFresh (do { na <- char 'a'; nb <- char 'b'; nc <- char 'c'; nabc <- concatNFA [na,nb,nc] ["abc"]; pure (lang nabc) }) defEnv
->>> r
-["abc"]
+L(Nr1r2...rn) = L(Nr1)L(Nr2)...L(Nrn) の確認:
+
+>>> (_, ok) = runFresh (do { na <- char 'a'; nb <- char 'b'; nc <- char 'c'; nabc <- concatNFA [na,nb,nc] ["abc"]; pure (map concat (sequence [lang na, lang nb, lang nc]) == lang nabc) }) defEnv
+>>> ok
+True
 -}
 concatNFA :: [NFA] -> [S] -> Fresh NFA
 concatNFA []       ws = emptyNFA ws
@@ -272,9 +274,9 @@ Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[
 
 L(Nr1|r2) = L(Nr1) ∪ L(Nr2) の確認:
 
->>> (_, r) = runFresh (do { na <- char 'a'; nb <- char 'b'; nAlt <- alterNFA na nb ["a","b"]; pure (lang nAlt) }) defEnv
->>> r
-["a","b"]
+>>> (_, ok) = runFresh (do { na <- char 'a'; nb <- char 'b'; nAlt <- alterNFA na nb ["a","b"]; pure ((lang na ++ lang nb) == lang nAlt) }) defEnv
+>>> ok
+True
 -}
 alterNFA :: NFA -> NFA -> [S] -> Fresh NFA
 alterNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws = do
@@ -295,9 +297,11 @@ alterNFA _ _ _ = error "alterNFA: f must be a singleton list"
 NFA のリストを1つの選択にまとめる。空リストは選択の単位元である
 「何も受理しないNFA」（noneNFA）になる。
 
->>> (_, r) = runFresh (do { na <- char 'a'; nb <- char 'b'; nc <- char 'c'; nChoice <- choiceNFA [na,nb,nc] ["a","b","c"]; pure (lang nChoice) }) defEnv
->>> r
-["a","b","c"]
+L(Nr1|r2|...|rn) = L(Nr1) ∪ L(Nr2) ∪ ... ∪ L(Nrn) の確認:
+
+>>> (_, ok) = runFresh (do { na <- char 'a'; nb <- char 'b'; nc <- char 'c'; nChoice <- choiceNFA [na,nb,nc] ["a","b","c"]; pure (concatMap lang [na,nb,nc] == lang nChoice) }) defEnv
+>>> ok
+True
 -}
 choiceNFA :: [NFA] -> [S] -> Fresh NFA
 choiceNFA []       ws = noneNFA ws
@@ -308,11 +312,12 @@ Nr1 = (Q1,Σ,δ1,p1,[q1]) から
 Nr1* = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1,q])]),(q1,[(ε,[p1,q])])}, p, [q])
 を作る。新規状態 p, q は Env から採番する。
 
-L(Nr1*) = L(Nr1)* の確認:
+L(Nr1*) = L(Nr1)* = {""} ∪ L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ... の確認
+（"","a","aa","aaa" の4段だけ）:
 
->>> (_, r) = runFresh (do { na <- char 'a'; nStar <- closureNFA na ["", "a", "aa", "aaa"]; pure (lang nStar) }) defEnv
->>> r
-["","a","aa","aaa"]
+>>> (_, ok) = runFresh (do { na <- char 'a'; nStar <- closureNFA na ["", "a", "aa", "aaa"]; pure (([""] ++ lang na ++ [x++y | x <- lang na, y <- lang na] ++ [x++y++z | x <- lang na, y <- lang na, z <- lang na]) == lang nStar) }) defEnv
+>>> ok
+True
 -}
 closureNFA :: NFA -> [S] -> Fresh NFA
 closureNFA (NFA qs1 _ d1 p1 [fq1]) ws = do
