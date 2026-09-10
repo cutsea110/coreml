@@ -21,4 +21,4 @@ findHsFiles dir = do
 main :: IO ()
 main = do
   files <- concat <$> forM targetDir findHsFiles
-  doctest $ map ("-i" ++) targetDir ++ files
+  doctest $ map ("-i" ++) targetDir ++ ["-Wno-x-partial"] ++ files

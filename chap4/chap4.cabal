@@ -10,20 +10,20 @@ category:           Language
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
 common warnings
-    ghc-options: -Wall
+    ghc-options: -Wall -Wno-x-partial
 library
     exposed-modules:  DFA
     build-depends:    base, containers
     hs-source-dirs:   src
     default-language: GHC2024
-    ghc-options:      -Wall
+    ghc-options:      -Wall -Wno-x-partial
 executable chap4
     import:           warnings
     main-is:          Main.hs
     build-depends:    base, chap4
     hs-source-dirs:   app
     default-language: GHC2024
-    ghc-options:      -Wall
+    ghc-options:      -Wall -Wno-x-partial
 
 test-suite doctest
     import:           warnings

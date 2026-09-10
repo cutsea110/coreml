@@ -4,7 +4,7 @@ version:            0.1.0.0
 build-type:         Simple
 
 common warnings
-    ghc-options: -Wall
+    ghc-options: -Wall -Wno-x-partial
 
 library
     exposed-modules:  Token
@@ -13,7 +13,7 @@ library
     build-depends:    base, containers, directory
     hs-source-dirs:   lex
     default-language: GHC2024
-    ghc-options:      -Wall
+    ghc-options:      -Wall -Wno-x-partial
 executable coremlc
     import:           warnings
     main-is:          Main.hs

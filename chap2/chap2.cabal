@@ -10,18 +10,18 @@ category:           Language
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
 common warnings
-    ghc-options: -Wall
+    ghc-options: -Wall -Wno-x-partial
 library
     exposed-modules:  TM
                       Eval
     build-depends:    base, containers
     hs-source-dirs:   src
     default-language: Haskell2010
-    ghc-options:      -Wall
+    ghc-options:      -Wall -Wno-x-partial
 executable chap2
     import:           warnings
     main-is:          Main.hs
     build-depends:    base, chap2
     hs-source-dirs:   app
     default-language: Haskell2010
-    ghc-options:      -Wall
+    ghc-options:      -Wall -Wno-x-partial
