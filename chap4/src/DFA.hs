@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 module DFA where
 
-import Data.List (nub)
+import Data.List (nub, (\\))
 
 -- ユーティリティ
 flatten :: Eq a => [[a]] -> [a]
@@ -344,6 +344,73 @@ toDFA nfa@(NFA _ ws d q0 fs)
         (qs', d') = subsets nfa ([a], [], [])
         fs'       = [ a' | a' <- qs', fs `hasAnyOf` a' ]
 
+type Block     = [State]
+type Partition = [Block]
+
+{-|
+toDFA が作る DFA は部分集合構成法だけを行うので、言語として等価な状態でも
+別々のDFA状態のままになっている（最小化されていない）。minimizeDFA はそれを
+素朴な分割再帰法（Moore法）でまとめ、最小のDFAを作る。
+
+やり方:
+
+1. 最終状態と非最終状態の2ブロックに分ける（これ以上は絶対に混ざれない）。
+2. 各ブロックについて、記号ごとの遷移先が属するブロックが状態同士で
+   食い違っていたら、そのブロックを割る。
+3. 分割が変化しなくなるまで2を繰り返す。
+4. 安定したブロック1つを新しい1状態とみなしてDFAを組み直す
+   （各ブロックの代表元として最小の State を採用する）。
+
+>>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4])), (3, (epsilon, [5])), (4, (epsilon, [5]))]
+>>> nfa = NFA [0..5] ["a","b"] d 0 [5]
+>>> dfa = toDFA nfa
+>>> dfa
+DFA {q = [[3,5],[],[4,5],[0,1,2]], s = ["a","b"], delta = [([3,5],[("b",[]),("a",[])]),([],[("b",[]),("a",[])]),([4,5],[("b",[]),("a",[])]),([0,1,2],[("b",[4,5]),("a",[3,5])])], q0 = [0,1,2], f = [[3,5],[4,5]]}
+>>> minimizeDFA dfa
+DFA {q = [[3,5],[],[0,1,2]], s = ["a","b"], delta = [([3,5],[("a",[]),("b",[])]),([],[("a",[]),("b",[])]),([0,1,2],[("a",[3,5]),("b",[3,5])])], q0 = [0,1,2], f = [[3,5]]}
+-}
+minimizeDFA :: DFA -> DFA
+minimizeDFA (DFA qs ws d q0 fs)
+  = DFA { q     = newQ
+        , s     = ws
+        , delta = newDelta
+        , q0    = rep q0
+        , f     = newF
+        }
+  where
+    target :: State -> S -> State
+    target st sym = maybe [] id $ do
+      row <- lookup st d
+      lookup sym row
+
+    classOf :: Partition -> State -> Int
+    classOf p st = head [ i | (i, blk) <- zip [0 :: Int ..] p, st `elem` blk ]
+
+    sigOf :: Partition -> State -> [Int]
+    sigOf p st = [ classOf p (target st sym) | sym <- ws ]
+
+    splitBlock :: Partition -> Block -> [Block]
+    splitBlock p blk = nub [ [ st' | (st', sg') <- tagged, sg' == sg ] | (_, sg) <- tagged ]
+      where tagged = [ (st, sigOf p st) | st <- blk ]
+
+    refine :: Partition -> Partition
+    refine p = concatMap (splitBlock p) p
+
+    stabilize :: Partition -> Partition
+    stabilize p
+      | length p' == length p = p
+      | otherwise              = stabilize p'
+      where p' = refine p
+
+    finalP :: Partition
+    finalP = stabilize (filter (not . null) [fs, qs \\ fs])
+
+    rep :: State -> State
+    rep st = minimum (finalP !! classOf finalP st)
+
+    newQ     = map minimum finalP
+    newF     = [ minimum blk | blk <- finalP, any (`elem` fs) blk ]
+    newDelta = [ (minimum blk, [ (sym, rep (target (head blk) sym)) | sym <- ws ]) | blk <- finalP ]
 
 newtype Env = Env { getEnv :: Int } deriving (Show, Eq)
 defEnv :: Env
