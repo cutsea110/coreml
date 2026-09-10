@@ -425,9 +425,35 @@ char env c = (env2, NFA [s,e] [sym] [(s,(sym,[e]))] s [e])
     (s, env1) = getNext env
     (e, env2) = getNext env1
 
+{-|
+[a-zA-Z] のような文字集合を1つのNFAにする。`choiceNFA` を鎖状に繰り返し畳み込むと
+文字数に比例した長さのε遷移の鎖ができてしまい、`epsilonCl` の不動点計算がその鎖を
+1ホップずつしか進められないため文字数が増えると急激に遅くなる。
+そこで新しい開始状態1つから各文字のNFAへε分岐、各文字のNFAの受理状態から
+新しい受理状態1つへε収束、という1段のfan-out/fan-inで組み立てる。
+
+>>> (_, NFA nq _ nd nq0 nf) = charsets defEnv "abc"
+>>> lang (NFA nq ["a","b","c","d","","ab","ac"] nd nq0 nf)
+["a","b","c"]
+-}
 charsets :: Env -> [Char] -> (Env, NFA)
-charsets _   []     = error "charsets: empty charsets"
-charsets env (c:cs) = foldl phi (char env c) cs
+charsets _   []  = error "charsets: empty charsets"
+charsets env cs
+  = ( env2
+    , NFA { q     = concat qss ++ [p, qf]
+          , s     = ws
+          , delta = concat dss ++ (p, (epsilon, starts)) : [ (fq, (epsilon, [qf])) | fq <- fins ]
+          , q0    = p
+          , f     = [qf]
+          }
+    )
   where
-    phi (env0, nfa0@NFA { s = s0 }) ch = choiceNFA env1 nfa0 nfa1 (s0 ++ s1)
-      where (env1, nfa1@NFA { s = s1 }) = char env0 ch
+    ws               = [ [c] | c <- cs ]
+    (env1, nfas)     = foldl step (env, []) cs
+    step (e, acc) ch = let (e', n) = char e ch in (e', acc ++ [n])
+    qss              = [ qsI | NFA qsI _  _  _  _    <- nfas ]
+    dss              = [ dI  | NFA _   _  dI _  _    <- nfas ]
+    starts           = [ p0  | NFA _   _  _  p0 _    <- nfas ]
+    fins             = [ fq  | NFA _   _  _  _  [fq] <- nfas ]
+    (p,  envA)       = getNext env1
+    (qf, env2)       = getNext envA
