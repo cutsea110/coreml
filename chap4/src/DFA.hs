@@ -412,6 +412,23 @@ minimizeDFA (DFA qs ws d q0 fs)
     newF     = [ minimum blk | blk <- finalP, any (`elem` fs) blk ]
     newDelta = [ (minimum blk, [ (sym, rep (target (head blk) sym)) | sym <- ws ]) | blk <- finalP ]
 
+{-|
+DFA d に文字列 w を実際に食わせて受理するか判定する。1文字ずつ delta を辿り、
+最後にいる状態が f に含まれるかを見るだけ。遷移が見つからない場合（trap状態への
+遷移や、アルファベットに無い文字を読んだ場合）は空の State に落として拒否として扱う。
+
+>>> (_, nfa) = charsets defEnv "abc"
+>>> dfa = minimizeDFA (toDFA nfa)
+>>> map (runDFA dfa) ["a","b","c","d","","ab","ac"]
+[True,True,True,False,False,False,False]
+-}
+runDFA :: DFA -> String -> Bool
+runDFA (DFA _ _ d q0 fs) w = foldl step q0 w `elem` fs
+  where
+    step st c = maybe [] id $ do
+      row <- lookup st d
+      lookup [c] row
+
 newtype Env = Env { getEnv :: Int } deriving (Show, Eq)
 defEnv :: Env
 defEnv = Env 0
