@@ -180,7 +180,7 @@ True
 
 - 選択 (r1|r2) : L(Nr1|r2) = L(Nr1) `union` L(Nr2)
 
->>> (_, nChoice) = choiceNFA (Env 4) n1 n2 ["a","b"]
+>>> (_, nChoice) = alterNFA (Env 4) n1 n2 ["a","b"]
 >>> lang nChoice
 ["a","b"]
 >>> (lang n1 ++ lang n2) == lang nChoice
@@ -198,7 +198,7 @@ lang (NFA _ ws d q0 fs)
 
 {-|
 何も読まずにε（空文字列）だけを受理するNFA。r? のような「省略可能」を
-choiceNFA と組み合わせて表現するときの、もう片方の選択肢として使う。
+alterNFA と組み合わせて表現するときの、もう片方の選択肢として使う。
 
 >>> (_, n) = emptyNFA defEnv ["", "a"]
 >>> lang n
@@ -207,6 +207,20 @@ choiceNFA と組み合わせて表現するときの、もう片方の選択肢�
 emptyNFA :: Env -> [S] -> (Env, NFA)
 emptyNFA env ws = (env1, NFA [p] ws [] p [p])
   where (p, env1) = getNext env
+
+{-|
+何も受理しない（空集合Φの）NFA。開始状態と受理状態を別々にし、間に
+一切遷移を作らないことで表現する。choiceNFA（N項の選択）の空リストの
+場合に、選択の単位元（Φ ∪ L = L）として使う。
+
+>>> (_, n) = noneNFA defEnv ["", "a"]
+>>> lang n
+[]
+-}
+noneNFA :: Env -> [S] -> (Env, NFA)
+noneNFA env ws = (env2, NFA [p,q] ws [] p [q])
+  where (p, env1) = getNext env
+        (q, env2) = getNext env1
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
@@ -255,15 +269,16 @@ concatNFA env (n:nfas) ws = foldl step (env, n) nfas
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
 Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[(ε,[q])])}, p, [q])
-を作る。新規状態 p, q は Env から採番する。
+を作る。新規状態 p, q は Env から採番する。2項の選択なので alterNFA という名前にしている
+（N個まとめて選択するのは choiceNFA）。
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
 >>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
->>> choiceNFA (Env 4) n1 n2 ["a","b"]
+>>> alterNFA (Env 4) n1 n2 ["a","b"]
 (Env {getEnv = 6},NFA {q = [0,1,2,3,4,5], s = ["a","b"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0,2])),(1,("",[5])),(3,("",[5]))], q0 = 4, f = [5]})
 -}
-choiceNFA :: Env -> NFA -> NFA -> [S] -> (Env, NFA)
-choiceNFA env (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
+alterNFA :: Env -> NFA -> NFA -> [S] -> (Env, NFA)
+alterNFA env (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
   = ( env2
     , NFA { q     = qs1 ++ qs2 ++ [p, qf]
           , s     = ws
@@ -277,7 +292,23 @@ choiceNFA env (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws
     )
   where (p,  env1) = getNext env
         (qf, env2) = getNext env1
-choiceNFA _ _ _ _ = error "choiceNFA: f must be a singleton list"
+alterNFA _ _ _ _ = error "alterNFA: f must be a singleton list"
+
+{-|
+NFA のリストを1つの選択にまとめる。空リストは選択の単位元である
+「何も受理しないNFA」（noneNFA）になる。
+
+>>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
+>>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
+>>> n3 = NFA [4,5] ["c"] [(4,("c",[5]))] 4 [5]
+>>> (_, nChoice) = choiceNFA (Env 6) [n1,n2,n3] ["a","b","c"]
+>>> lang nChoice
+["a","b","c"]
+-}
+choiceNFA :: Env -> [NFA] -> [S] -> (Env, NFA)
+choiceNFA env []       ws = noneNFA env ws
+choiceNFA env (n:nfas) ws = foldl step (env, n) nfas
+  where step (e, acc) nfa = alterNFA e acc nfa ws
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]) から
@@ -492,7 +523,7 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 >>> numAlphabet = "-" : digitAlphabet
 >>> (g1, nDash) = char defEnv '-'
 >>> (g2, nEps) = emptyNFA g1 numAlphabet
->>> (g3, nOptDash) = choiceNFA g2 nDash nEps numAlphabet
+>>> (g3, nOptDash) = alterNFA g2 nDash nEps numAlphabet
 >>> (g4, nDigits1) = charsets g3 digits
 >>> (g5, nDigits2) = charsets g4 digits
 >>> (g6, nDigitsStar) = closureNFA g5 nDigits2 numAlphabet
@@ -522,7 +553,7 @@ char env c = (env2, NFA [s,e] [sym] [(s,(sym,[e]))] s [e])
     (e, env2) = getNext env1
 
 {-|
-[a-zA-Z] のような文字集合を1つのNFAにする。`choiceNFA` を鎖状に繰り返し畳み込むと
+[a-zA-Z] のような文字集合を1つのNFAにする。`alterNFA` を鎖状に繰り返し畳み込むと
 文字数に比例した長さのε遷移の鎖ができてしまい、`epsilonCl` の不動点計算がその鎖を
 1ホップずつしか進められないため文字数が増えると急激に遅くなる。
 そこで新しい開始状態1つから各文字のNFAへε分岐、各文字のNFAの受理状態から
