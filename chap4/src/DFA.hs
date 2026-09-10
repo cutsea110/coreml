@@ -231,8 +231,11 @@ Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε
 を作る。新規状態 p, q は Env から採番する。2項の連接なので `(++)` に倣って
 appendNFA という名前にしている（N個まとめて連接するのは concatNFA、`concat` 相当）。
 
->>> runFresh (do { na <- char 'a'; nb <- char 'b'; appendNFA na nb ["a","b"] }) defEnv
-(Env {getEnv = 6},NFA {q = [0,1,2,3,4,5], s = ["a","b"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0])),(1,("",[2])),(3,("",[5]))], q0 = 4, f = [5]})
+L(Nr1r2) = L(Nr1)L(Nr2) の確認:
+
+>>> (_, r) = runFresh (do { na <- char 'a'; nb <- char 'b'; nab <- appendNFA na nb ["ab"]; pure (lang nab) }) defEnv
+>>> r
+["ab"]
 -}
 appendNFA :: NFA -> NFA -> [S] -> Fresh NFA
 appendNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws = do
@@ -267,8 +270,11 @@ Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[
 を作る。新規状態 p, q は Env から採番する。2項の選択なので alterNFA という名前にしている
 （N個まとめて選択するのは choiceNFA）。
 
->>> runFresh (do { na <- char 'a'; nb <- char 'b'; alterNFA na nb ["a","b"] }) defEnv
-(Env {getEnv = 6},NFA {q = [0,1,2,3,4,5], s = ["a","b"], delta = [(0,("a",[1])),(2,("b",[3])),(4,("",[0,2])),(1,("",[5])),(3,("",[5]))], q0 = 4, f = [5]})
+L(Nr1|r2) = L(Nr1) ∪ L(Nr2) の確認:
+
+>>> (_, r) = runFresh (do { na <- char 'a'; nb <- char 'b'; nAlt <- alterNFA na nb ["a","b"]; pure (lang nAlt) }) defEnv
+>>> r
+["a","b"]
 -}
 alterNFA :: NFA -> NFA -> [S] -> Fresh NFA
 alterNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws = do
@@ -302,8 +308,11 @@ Nr1 = (Q1,Σ,δ1,p1,[q1]) から
 Nr1* = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1,q])]),(q1,[(ε,[p1,q])])}, p, [q])
 を作る。新規状態 p, q は Env から採番する。
 
->>> runFresh (do { na <- char 'a'; closureNFA na ["", "a", "aa"] }) defEnv
-(Env {getEnv = 4},NFA {q = [0,1,2,3], s = ["","a","aa"], delta = [(0,("a",[1])),(2,("",[0,3])),(1,("",[0,3]))], q0 = 2, f = [3]})
+L(Nr1*) = L(Nr1)* の確認:
+
+>>> (_, r) = runFresh (do { na <- char 'a'; nStar <- closureNFA na ["", "a", "aa", "aaa"]; pure (lang nStar) }) defEnv
+>>> r
+["","a","aa","aaa"]
 -}
 closureNFA :: NFA -> [S] -> Fresh NFA
 closureNFA (NFA qs1 _ d1 p1 [fq1]) ws = do
