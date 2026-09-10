@@ -231,11 +231,11 @@ Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε
 を作る。新規状態 p, q は Env から採番する。2項の連接なので `(++)` に倣って
 appendNFA という名前にしている（N個まとめて連接するのは concatNFA、`concat` 相当）。
 
-L(Nr1r2) = L(Nr1)L(Nr2) の確認:
+L(Nr1r2) = L(Nr1)L(Nr2) の確認（AB = [xy | x <- A, y <- B]）:
 
->>> (_, r) = runFresh (do { na <- char 'a'; nb <- char 'b'; nab <- appendNFA na nb ["ab"]; pure (lang nab) }) defEnv
->>> r
-["ab"]
+>>> (_, ok) = runFresh (do { na <- char 'a'; nb <- char 'b'; nab <- appendNFA na nb ["ab"]; pure ([x++y | x <- lang na, y <- lang nb] == lang nab) }) defEnv
+>>> ok
+True
 -}
 appendNFA :: NFA -> NFA -> [S] -> Fresh NFA
 appendNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) ws = do
