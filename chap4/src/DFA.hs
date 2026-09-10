@@ -197,6 +197,18 @@ lang (NFA _ ws d q0 fs)
   = [w | w <- ws, fs `hasAnyOf` delta' d (q0, w)]
 
 {-|
+何も読まずにε（空文字列）だけを受理するNFA。r? のような「省略可能」を
+choiceNFA と組み合わせて表現するときの、もう片方の選択肢として使う。
+
+>>> (_, n) = emptyNFA defEnv ["", "a"]
+>>> lang n
+[""]
+-}
+emptyNFA :: Env -> [S] -> (Env, NFA)
+emptyNFA env ws = (env1, NFA [p] ws [] p [p])
+  where (p, env1) = getNext env
+
+{-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
 Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε,[q])])}, p, [q])
 を作る。新規状態 p, q は Env から採番する。
@@ -417,10 +429,61 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 最後にいる状態が f に含まれるかを見るだけ。遷移が見つからない場合（trap状態への
 遷移や、アルファベットに無い文字を読んだ場合）は空の State に落として拒否として扱う。
 
+
+- [a-c] : charsets で作った文字集合例
+
 >>> (_, nfa) = charsets defEnv "abc"
 >>> dfa = minimizeDFA (toDFA nfa)
 >>> map (runDFA dfa) ["a","b","c","d","","ab","ac"]
 [True,True,True,False,False,False,False]
+
+
+- [a-c]* : charsets と closureNFA を組み合わせる例
+
+>>> (e1, nabc) = charsets defEnv "abc"
+>>> (_, nstar) = closureNFA e1 nabc ["a","b","c"]
+>>> starDfa = minimizeDFA (toDFA nstar)
+>>> map (runDFA starDfa) ["", "a", "abc", "aabbcc", "cba", "aaaa", "d", "abcd", "ab1"]
+[True,True,True,True,True,True,False,False,False]
+
+
+- abc : char と concatNFA で作った文字列リテラル例
+
+>>> abcAlphabet = ["a","b","c"]
+>>> (f1, na)  = char defEnv 'a'
+>>> (f2, nb)  = char f1 'b'
+>>> (f3, nc)  = char f2 'c'
+>>> (f4, nab) = concatNFA f3 na nb abcAlphabet
+>>> (f5, nabcSeq) = concatNFA f4 nab nc abcAlphabet
+>>> abcDfa = minimizeDFA (toDFA nabcSeq)
+>>> map (runDFA abcDfa) ["a","b","c","d","","ab","ac","abc"]
+[False,False,False,False,False,False,False,True]
+
+
+- (abc)* : char と concatNFA と closureNFA を組み合わせる例
+
+>>> (_, nabcStar) = closureNFA f5 nabcSeq abcAlphabet
+>>> abcStarDfa = minimizeDFA (toDFA nabcStar)
+>>> map (runDFA abcStarDfa) ["", "abc", "abcabc", "abcabcabc", "ab", "abca", "abcabx", "xabc"]
+[True,True,True,True,False,False,False,False]
+
+
+- (-?)[0-9]+ : emptyNFA で「-の省略」を、charsets を2回使って「最初の1桁」と「0回以上の繰り返し」を分けて組み立てる例
+
+>>> digits = ['0'..'9']
+>>> digitAlphabet = [ [c] | c <- digits ]
+>>> numAlphabet = "-" : digitAlphabet
+>>> (g1, nDash) = char defEnv '-'
+>>> (g2, nEps) = emptyNFA g1 numAlphabet
+>>> (g3, nOptDash) = choiceNFA g2 nDash nEps numAlphabet
+>>> (g4, nDigits1) = charsets g3 digits
+>>> (g5, nDigits2) = charsets g4 digits
+>>> (g6, nDigitsStar) = closureNFA g5 nDigits2 numAlphabet
+>>> (g7, nDigitsPlus) = concatNFA g6 nDigits1 nDigitsStar numAlphabet
+>>> (_, nNum) = concatNFA g7 nOptDash nDigitsPlus numAlphabet
+>>> numDfa = minimizeDFA (toDFA nNum)
+>>> map (runDFA numDfa) ["123", "-123", "0", "-0", "007", "", "-", "12a", "--12", "12-"]
+[True,True,True,True,True,False,False,False,False,False]
 -}
 runDFA :: DFA -> String -> Bool
 runDFA (DFA _ _ d q0 fs) w = foldl step q0 w `elem` fs
