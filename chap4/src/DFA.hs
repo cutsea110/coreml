@@ -552,8 +552,20 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。1文�
 
 >>> (_, nfa) = runFresh (charsets "abc") (newEnv ["a","b","c"])
 >>> dfa = minimizeDFA (toDFA nfa)
->>> map (runDFA dfa) ["a","b","c","d","","ab","ac"]
-[True,True,True,False,False,False,False]
+>>> runDFA dfa "a"
+True
+>>> runDFA dfa "b"
+True
+>>> runDFA dfa "c"
+True
+>>> runDFA dfa "d"
+False
+>>> runDFA dfa ""
+False
+>>> runDFA dfa "ab"
+False
+>>> runDFA dfa "ac"
+False
 
 
 - [a-c]* : charsets と closureNFA を do 記法でつなぐ例
@@ -566,8 +578,24 @@ let (_, nstar) = runFresh (do { nabc <- charsets "abc"
 :}
 
 >>> starDfa = minimizeDFA (toDFA nstar)
->>> map (runDFA starDfa) ["", "a", "abc", "aabbcc", "cba", "aaaa", "d", "abcd", "ab1"]
-[True,True,True,True,True,True,False,False,False]
+>>> runDFA starDfa ""
+True
+>>> runDFA starDfa "a"
+True
+>>> runDFA starDfa "abc"
+True
+>>> runDFA starDfa "aabbcc"
+True
+>>> runDFA starDfa "cba"
+True
+>>> runDFA starDfa "aaaa"
+True
+>>> runDFA starDfa "d"
+False
+>>> runDFA starDfa "abcd"
+False
+>>> runDFA starDfa "ab1"
+False
 
 
 - abc : char と concatNFA（N項版）を do 記法でつなぐ、文字列リテラル例
@@ -581,16 +609,44 @@ let (e4, nabcSeq) = runFresh (do { na <- char 'a'
 :}
 
 >>> abcDfa = minimizeDFA (toDFA nabcSeq)
->>> map (runDFA abcDfa) ["a","b","c","d","","ab","ac","abc"]
-[False,False,False,False,False,False,False,True]
+>>> runDFA abcDfa "a"
+False
+>>> runDFA abcDfa "b"
+False
+>>> runDFA abcDfa "c"
+False
+>>> runDFA abcDfa "d"
+False
+>>> runDFA abcDfa ""
+False
+>>> runDFA abcDfa "ab"
+False
+>>> runDFA abcDfa "ac"
+False
+>>> runDFA abcDfa "abc"
+True
 
 
 - (abc)* : 上の nabcSeq に closureNFA をかぶせるだけの例（e4 は既にΣを含んでいるので渡し直す必要はない）
 
 >>> (_, nabcStar) = runFresh (closureNFA nabcSeq) e4
 >>> abcStarDfa = minimizeDFA (toDFA nabcStar)
->>> map (runDFA abcStarDfa) ["", "abc", "abcabc", "abcabcabc", "ab", "abca", "abcabx", "xabc"]
-[True,True,True,True,False,False,False,False]
+>>> runDFA abcStarDfa ""
+True
+>>> runDFA abcStarDfa "abc"
+True
+>>> runDFA abcStarDfa "abcabc"
+True
+>>> runDFA abcStarDfa "abcabcabc"
+True
+>>> runDFA abcStarDfa "ab"
+False
+>>> runDFA abcStarDfa "abca"
+False
+>>> runDFA abcStarDfa "abcabx"
+False
+>>> runDFA abcStarDfa "xabc"
+False
 
 
 - (-?)[0-9]+ : emptyNFA で「-の省略」を、charsets を2回使って「最初の1桁」と「0回以上の繰り返し」を分けて組み立て、
@@ -611,8 +667,26 @@ let (_, nNum) = runFresh (do { nDash <- char '-'
 :}
 
 >>> numDfa = minimizeDFA (toDFA nNum)
->>> map (runDFA numDfa) ["123", "-123", "0", "-0", "007", "", "-", "12a", "--12", "12-"]
-[True,True,True,True,True,False,False,False,False,False]
+>>> runDFA numDfa "123"
+True
+>>> runDFA numDfa "-123"
+True
+>>> runDFA numDfa "0"
+True
+>>> runDFA numDfa "-0"
+True
+>>> runDFA numDfa "007"
+True
+>>> runDFA numDfa ""
+False
+>>> runDFA numDfa "-"
+False
+>>> runDFA numDfa "12a"
+False
+>>> runDFA numDfa "--12"
+False
+>>> runDFA numDfa "12-"
+False
 -}
 runDFA :: DFA -> String -> Bool
 runDFA (DFA _ _ d q0 fs) w = foldl step q0 w `elem` fs
