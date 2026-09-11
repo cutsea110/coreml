@@ -11,6 +11,10 @@ hasAnyOf :: Eq a => [a] -> [a] -> Bool
 fs `hasAnyOf` xs = any (`elem` fs) xs
 swap :: (a, b) -> (b, a)
 swap (x, y) = (y, x)
+pair :: (a -> b, a -> c) -> a -> (b, c)
+pair (f, g) x = (f x, g x)
+cross :: (a -> b, c -> d) -> (a, c) -> (b, d)
+cross (f, g) (x, y) = (f x, g y)
 
 type S = String
 
@@ -201,9 +205,9 @@ lang :: NFA -> [S]
 lang (NFA _ ws d q0 fs) = [w | w <- ws, fs `hasAnyOf` delta' d (q0, w)]
 
 {-|
-NFA が特定の1つの文字列を受理するかどうかを判定する。`lang` はNFA自身が持つ
-アルファベットΣ（`s`フィールド）に含まれる候補しか調べられないので、
-Σそのものとは無関係な（例えば連接後の複数文字の）文字列を直接テストしたいときに使う。
+NFA が特定の1つの文字列を受理するかどうかを判定する。
+`lang` は NFA 自身が持つアルファベットΣ(`s` フィールド)に含まれる候補しか調べられないので、
+Σそのものとは無関係な(例えば連接後の複数文字の)文字列を直接テストしたいときに使う。
 
 >>> (_, n) = runFresh (char 'a') (newEnv ["a","b"])
 >>> accepts n "a"
@@ -215,7 +219,7 @@ accepts :: NFA -> S -> Bool
 accepts (NFA _ _ d q0 fs) w = fs `hasAnyOf` delta' d (q0, w)
 
 {-|
-何も読まずにε（空文字列）だけを受理するNFA。r? のような「省略可能」を
+何も読まずにε(空文字列)だけを受理する NFA。r? のような「省略可能」を
 alterNFA と組み合わせて表現するときの、もう片方の選択肢として使う。
 
 >>> (_, n) = runFresh emptyNFA (newEnv ["", "a"])
@@ -229,9 +233,9 @@ emptyNFA = do
   pure (NFA [p] ws [] p [p])
 
 {-|
-何も受理しない（空集合Φの）NFA。開始状態と受理状態を別々にし、間に
-一切遷移を作らないことで表現する。choiceNFA（N項の選択）の空リストの
-場合に、選択の単位元（Φ ∪ L = L）として使う。
+何も受理しない(空集合Φの)NFA。開始状態と受理状態を別々にし、
+間に一切遷移を作らないことで表現する。choiceNFA(N項の選択)の空リストの場合に、
+選択の単位元(Φ ∪ L = L)として使う。
 
 >>> (_, n) = runFresh noneNFA (newEnv ["", "a"])
 >>> lang n
@@ -246,15 +250,15 @@ noneNFA = do
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
-Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε,[q])])}, p, [q])
-を作る。新規状態 p, q は Env から採番する。2項の連接なので `(++)` に倣って
-appendNFA という名前にしている（N個まとめて連接するのは concatNFA、`concat` 相当）。
+Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε,[q])])}, p, [q])を作る。
+新規状態 p, q は Env から採番する。2項の連接なので `(++)` に倣って
+appendNFA という名前にしている(N個まとめて連接するのは concatNFA、`concat` 相当)。
 
-na, nb は同じΣ（ここでは ["a","b"]）を共有するNFAとして作る（`alphabet` は
-`runFresh` に渡した1つのΣを指すので、必ず揃う）。連接した nab もこのΣを
-そのまま引き継ぐので、"ab" のような複数文字の文字列はもはやΣの要素では
-ない（Σは1記号ずつの集合）。そのため lang ではなく、任意の文字列を直接判定できる
-accepts で L(Nr1r2) = L(Nr1)L(Nr2)（AB = [xy | x <- A, y <- B]）を確認する:
+na, nb は同じΣ(ここでは ["a","b"])を共有する NFA として作る
+(`alphabet` は `runFresh` に渡した1つのΣを指すので、必ず揃う)。
+連接した nab もこのΣを引き継ぐので、"ab" のような複数文字の文字列はもはやΣの要素ではない(Σは1記号ずつの集合)。
+そのため lang ではなく、任意の文字列を直接判定できる
+accepts で L(Nr1r2) = L(Nr1)L(Nr2)(AB = [xy | x <- A, y <- B])を確認する:
 
 >>> :{
 let (_, ok) = runFresh (do { na <- char 'a'
@@ -284,11 +288,11 @@ appendNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) = do
 appendNFA _ _ = error "appendNFA: f must be a singleton list"
 
 {-|
-NFA のリストを1つに連接する。`concat = foldr (++) []` に倣い、
-appendNFA を畳み込んで作る。空リストは連接の単位元である emptyNFA（εだけを受理）になる。
+NFA のリストを1つに連接する。`concat = foldr (++) []` に倣い、appendNFA を畳み込んで作る。
+空リストは連接の単位元である emptyNFA(εだけを受理)になる。
 
-na, nb, nc は同じΣ（["a","b","c"]）を共有するNFAとして作る。appendNFA と同じ理由で
-lang ではなく accepts で L(Nr1r2...rn) = L(Nr1)L(Nr2)...L(Nrn) を確認する:
+na, nb, nc は同じΣ(["a","b","c"])を共有する NFA として作る。
+appendNFA と同じ理由で lang ではなく accepts で L(Nr1r2...rn) = L(Nr1)L(Nr2)...L(Nrn) を確認する:
 
 >>> :{
 let (_, ok) = runFresh (do { na <- char 'a'
@@ -308,9 +312,9 @@ concatNFA (n:nfas) = foldM appendNFA n nfas
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
-Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[(ε,[q])])}, p, [q])
-を作る。新規状態 p, q は Env から採番する。2項の選択なので alterNFA という名前にしている
-（N個まとめて選択するのは choiceNFA）。
+Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[(ε,[q])])}, p, [q]) を作る。
+新規状態 p, q は Env から採番する。
+2項の選択なので alterNFA という名前にしている(N個まとめて選択するのは choiceNFA)。
 
 L(Nr1|r2) = L(Nr1) ∪ L(Nr2) の確認:
 
@@ -343,7 +347,7 @@ alterNFA _ _ = error "alterNFA: f must be a singleton list"
 
 {-|
 NFA のリストを1つの選択にまとめる。空リストは選択の単位元である
-「何も受理しないNFA」（noneNFA）になる。
+「何も受理しない NFA」(noneNFA)になる。
 
 L(Nr1|r2|...|rn) = L(Nr1) ∪ L(Nr2) ∪ ... ∪ L(Nrn) の確認:
 
@@ -368,10 +372,10 @@ Nr1 = (Q1,Σ,δ1,p1,[q1]) から
 Nr1* = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1,q])]),(q1,[(ε,[p1,q])])}, p, [q])
 を作る。新規状態 p, q は Env から採番する。
 
-na, nStar も同じΣ（["a"]）を共有する。閉包が作る文字列は長さが揃わないので、
+na, nStar も同じΣ(["a"])を共有する。閉包が作る文字列は長さが揃わないので、
 appendNFA/concatNFA と同じ理由で lang ではなく accepts を使い、
 L(Nr1*) = L(Nr1)* = {""} ∪ L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ... を確認する
-（"","a","aa","aaa" の4段だけ）:
+("","a","aa","aaa" の4段だけ):
 
 >>> :{
 let (_, ok) = runFresh (do { na <- char 'a'
@@ -434,13 +438,13 @@ subsets nfa (a:qs1, qs2, d) = subsets nfa $ addQ nfa a (qs1, qs2, d)
 >>> toDFA nfa
 DFA {q = [[3,5],[],[4,5],[0,1,2]], s = ["a","b"], delta = [([3,5],[("b",[]),("a",[])]),([],[("b",[]),("a",[])]),([4,5],[("b",[]),("a",[])]),([0,1,2],[("b",[4,5]),("a",[3,5])])], q0 = [0,1,2], f = [[3,5],[4,5]]}
 
-- q0 は必ず q に含まれる（起点にε遷移があるため、修正前は `q0 = [q0]` がこの不変条件を破っていた）
+- q0 は必ず q に含まれる(起点にε遷移があるため、修正前は `q0 = [q0]` がこの不変条件を破っていた)
 
 >>> DFA qs _ _ q0' _ = toDFA nfa
 >>> q0' `elem` qs
 True
 
-連接 (abab) : εを含まない、鎖状のNFA。各NFA状態がそのまま1つのDFA状態になる
+連接 (abab) : εを含まない、鎖状の NFA。各 NFA 状態がそのまま1つの DFA 状態になる
 
 >>> d2 = [(0, ("a", [1])), (1, ("b", [2])), (2, ("a", [3])), (3, ("b", [4]))]
 >>> nfa2 = NFA [0..4] ["a","b"] d2 0 [4]
@@ -451,9 +455,8 @@ DFA {q = [[4],[3],[2],[1],[],[0]], s = ["a","b"], delta = [([4],[("b",[]),("a",[
 >>> q0'2 `elem` qs2
 True
 
-閉包 (a*) : closureNFA が受理状態から開始状態へεで戻す辺を持つため、
-NFA自体が循環パターンになっている。
-その結果DFA側の遷移表にも状態 [1,0,3] が "a" を読んで自分自身に戻る自己ループが現れる。
+閉包 (a*) : closureNFA が受理状態から開始状態へεで戻す辺を持つため、NFA 自体が循環パターンになっている。
+その結果 DFA 側の遷移表にも状態 [1,0,3] が "a" を読んで自分自身に戻る自己ループが現れる。
 
 >>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
 >>> (_, nStar) = runFresh (closureNFA n1) (Env 2 ["a"])
@@ -481,17 +484,17 @@ type Partition = [Block]
 
 {-|
 toDFA が作る DFA は部分集合構成法だけを行うので、言語として等価な状態でも
-別々のDFA状態のままになっている（最小化されていない）。minimizeDFA はそれを
-素朴な分割再帰法（Moore法）でまとめ、最小のDFAを作る。
+別々の DFA 状態のままになっている(最小化されていない)。
+minimizeDFA はそれを素朴な分割再帰法(Moore法)でまとめ、最小の DFA を作る。
 
 やり方:
 
-1. 最終状態と非最終状態の2ブロックに分ける（これ以上は絶対に混ざれない）。
+1. 最終状態と非最終状態の2ブロックに分ける(これ以上は絶対に混ざれない)。
 2. 各ブロックについて、記号ごとの遷移先が属するブロックが状態同士で
    食い違っていたら、そのブロックを割る。
 3. 分割が変化しなくなるまで2を繰り返す。
-4. 安定したブロック1つを新しい1状態とみなしてDFAを組み直す
-   （各ブロックの代表元として最小の State を採用する）。
+4. 安定したブロック1つを新しい1状態とみなして DFA を組み直す
+   (各ブロックの代表元として最小の State を採用する)。
 
 >>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4])), (3, (epsilon, [5])), (4, (epsilon, [5]))]
 >>> nfa = NFA [0..5] ["a","b"] d 0 [5]
@@ -545,9 +548,10 @@ minimizeDFA (DFA qs ws d q0 fs)
     newDelta = [ (minimum blk, [ (sym, rep (target (head blk) sym)) | sym <- ws ]) | blk <- finalP ]
 
 {-|
-DFA d に文字列 w を実際に食わせて受理するか判定する。1文字ずつ delta を辿り、
-最後にいる状態が f に含まれるかを見るだけ。遷移が見つからない場合（trap状態への
-遷移や、アルファベットに無い文字を読んだ場合）は空の State に落として拒否として扱う。
+DFA d に文字列 w を実際に食わせて受理するか判定する。
+1文字ずつ delta を辿り、最後にいる状態が f に含まれるかを見るだけ。
+遷移が見つからない場合(trap 状態への遷移や、アルファベットに無い文字を読んだ場合)は
+空の State に落として拒否として扱う。
 
 
 - [a-c] : charsets で作った文字集合例
@@ -600,7 +604,7 @@ False
 False
 
 
-- abc : char と concatNFA（N項版）を do 記法でつなぐ、文字列リテラル例
+- abc : char と concatNFA(N項版)を do 記法でつなぐ、文字列リテラル例
 
 >>> :{
 let (e4, nabcSeq) = runFresh (do { na <- char 'a'
@@ -629,7 +633,7 @@ False
 True
 
 
-- (abc)* : 上の nabcSeq に closureNFA をかぶせるだけの例（e4 は既にΣを含んでいるので渡し直す必要はない）
+- (abc)* : 上の nabcSeq に closureNFA をかぶせるだけの例(e4 は既にΣを含んでいるので渡し直す必要はない)
 
 >>> (_, nabcStar) = runFresh (closureNFA nabcSeq) e4
 >>> abcStarDfa = minimizeDFA (toDFA nabcStar)
@@ -652,7 +656,7 @@ False
 
 
 - (-?)[0-9]+ : emptyNFA で「-の省略」を、charsets を2回使って「最初の1桁」と「0回以上の繰り返し」を分けて組み立て、
-  最後に concatNFA（N項版）で「省略可能な-」「最初の1桁」「0回以上の繰り返し」の3つを一度に連接する、まとめて1つの do 記法で書く例
+  最後に concatNFA(N項版)で「省略可能な-」「最初の1桁」「0回以上の繰り返し」の3つを一度に連接する、まとめて1つの do 記法で書く例
 
 >>> digits = ['0'..'9']
 >>> digitAlphabet = [ [c] | c <- digits ]
@@ -698,9 +702,9 @@ runDFA (DFA _ _ d q0 fs) w = foldl step q0 w `elem` fs
       lookup [c] row
 
 {-|
-採番用のカウンタに加えて、構築中の正規表現全体で共有するアルファベットΣを
-一緒に持つ。Σは `newEnv` で最初に決めたら以後変わらない
-（`local`のような差し替えは提供しない＝構築全体でΣは1つに固定される）。
+採番用のカウンタに加えて、構築中の正規表現全体で共有するアルファベットΣを一緒に持つ。
+Σは `newEnv` で最初に決めたら以後変わらない
+(`local` のような差し替えは提供しない＝構築全体でΣは1つに固定される)。
 
 >>> sigma (newEnv ["a","b"])
 ["a","b"]
@@ -714,10 +718,9 @@ getNext :: Env -> (Int, Env)
 getNext (Env n ws) = (n, Env (n + 1) ws)
 
 {-|
-Env（採番用のカウンタとΣ）を持ち回る小さな状態モナド。`char`/`charsets`/
-`appendNFA`/... はどれも「同じΣの上で新しい状態番号を必要なだけ採番しながら
-NFAを組み立てる」計算なので、Env を明示的な引数として毎回受け渡す代わりに
-この型でラップし、`do` 記法で書けるようにする。
+Env(採番用のカウンタとΣ)を持ち回る小さな状態モナド。
+`char`/`charsets`/`appendNFA`/... は全て「同じΣの上で新しい状態番号を必要なだけ採番しながら NFA を組み立てる」計算なので、
+Env を明示的な引数として毎回受け渡す代わりにこの型でラップし、`do` 記法で書けるようにする。
 
 >>> runFresh (pure 'x') (newEnv ["a","b"])
 (Env {getEnv = 0, sigma = ["a","b"]},'x')
@@ -729,13 +732,15 @@ NFAを組み立てる」計算なので、Env を明示的な引数として毎�
 newtype Fresh a = Fresh { runFresh :: Env -> (Env, a) }
 
 fresh :: Fresh Q
-fresh = Fresh $ \env -> swap (getNext env)
+fresh = Fresh $ swap . getNext
 
 alphabet :: Fresh [S]
-alphabet = Fresh $ \env -> (env, sigma env)
+alphabet = Fresh $ pair (id, sigma)
 
 instance Functor Fresh where
-  fmap f (Fresh g) = Fresh $ \env -> let (env', a) = g env in (env', f a)
+  fmap f (Fresh g) = Fresh $ \env ->
+    let (env', a) = g env
+    in (env', f a)
 
 instance Applicative Fresh where
   pure a = Fresh $ \env -> (env, a)
@@ -750,9 +755,9 @@ instance Monad Fresh where
     in runFresh (f a) env1
 
 {-|
-1文字だけを読むNFAを作る。自分が読む記号はその1文字だけでも、`s`フィールドには
-`alphabet`（構築全体で共有するΣ）を使う。他のNFAと連接・選択する際に
-同じΣを前提にする必要があるため。
+1文字だけを読む NFA を作る。
+自分が読む記号はその1文字だけでも、`s` フィールドには `alphabet`(構築全体で共有するΣ)を使う。
+他の NFA と連接・選択する際に同じΣを前提にする必要があるため。
 
 >>> (_, n) = runFresh (char 'a') (newEnv ["a","b"])
 >>> lang n
@@ -766,15 +771,14 @@ char c = do
   pure (NFA [s,e] ws [(s,([c],[e]))] s [e])
 
 {-|
-[a-zA-Z] のような文字集合を1つのNFAにする。Σは自分の文字だけから決めるのではなく
-`alphabet` を使う（`charsets "abc"` を他の部分と組み合わせて使う正規表現全体のΣは
-"abc" だけとは限らないため）。
+[a-zA-Z] のような文字集合を1つの NFA にする。
+Σは自分の文字だけから決めるのではなく `alphabet` を使う
+(`charsets "abc"` を他の部分と組み合わせて使う正規表現全体のΣは "abc" だけとは限らないため)。
 
-`alterNFA` を鎖状に繰り返し畳み込むと文字数に比例した長さのε遷移の鎖が
-できてしまい、`epsilonCl` の不動点計算がその鎖を1ホップずつしか進められない
-ため文字数が増えると急激に遅くなる。そこで新しい開始状態1つから各文字の
-NFAへε分岐、各文字のNFAの受理状態から新しい受理状態1つへε収束、という
-1段のfan-out/fan-inで組み立てる。
+`alterNFA` を鎖状に繰り返し畳み込むと文字数に比例した長さのε遷移の鎖ができてしまい、
+`epsilonCl` の不動点計算がその鎖を1ホップずつしか進められないため文字数が増えると急激に遅くなる。
+そこで新しい開始状態1つから各文字の NFA へε分岐、各文字の NFA の受理状態から新しい受理状態1つへε収束、
+という1段の fan-out/fan-in で組み立てる。
 
 >>> (_, NFA nq _ nd nq0 nf) = runFresh (charsets "abc") (newEnv ["a","b","c"])
 >>> lang (NFA nq ["a","b","c","d","","ab","ac"] nd nq0 nf)
