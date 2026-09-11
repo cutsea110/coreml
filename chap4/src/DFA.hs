@@ -9,6 +9,8 @@ flatten :: Eq a => [[a]] -> [a]
 flatten = nub . concat
 hasAnyOf :: Eq a => [a] -> [a] -> Bool
 fs `hasAnyOf` xs = any (`elem` fs) xs
+swap :: (a, b) -> (b, a)
+swap (x, y) = (y, x)
 
 type S = String
 
@@ -726,6 +728,12 @@ NFAを組み立てる」計算なので、Env を明示的な引数として毎�
 -}
 newtype Fresh a = Fresh { runFresh :: Env -> (Env, a) }
 
+fresh :: Fresh Q
+fresh = Fresh $ \env -> swap (getNext env)
+
+alphabet :: Fresh [S]
+alphabet = Fresh $ \env -> (env, sigma env)
+
 instance Functor Fresh where
   fmap f (Fresh g) = Fresh $ \env -> let (env', a) = g env in (env', f a)
 
@@ -740,14 +748,6 @@ instance Monad Fresh where
   Fresh ma >>= f = Fresh $ \env ->
     let (env1, a) = ma env
     in runFresh (f a) env1
-
-fresh :: Fresh Q
-fresh = Fresh $ \env ->
-  let (n, env') = getNext env
-  in (env', n)
-
-alphabet :: Fresh [S]
-alphabet = Fresh $ \env -> (env, sigma env)
 
 {-|
 1文字だけを読むNFAを作る。自分が読む記号はその1文字だけでも、`s`フィールドには
