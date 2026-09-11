@@ -219,8 +219,8 @@ accepts :: NFA -> S -> Bool
 accepts (NFA _ _ d q0 fs) w = fs `hasAnyOf` delta' d (q0, w)
 
 {-|
-何も読まずにε(空文字列)だけを受理する NFA。r? のような「省略可能」を
-alterNFA と組み合わせて表現するときの、もう片方の選択肢として使う。
+何も読まずにε(空文字列)だけを受理する NFA。
+r? のような「省略可能」を alterNFA と組み合わせて表現するときの、もう片方の選択肢として使う。
 
 >>> (_, n) = runFresh emptyNFA (newEnv ["", "a"])
 >>> lang n
@@ -233,9 +233,9 @@ emptyNFA = do
   pure (NFA [p] ws [] p [p])
 
 {-|
-何も受理しない(空集合Φの)NFA。開始状態と受理状態を別々にし、
-間に一切遷移を作らないことで表現する。choiceNFA(N項の選択)の空リストの場合に、
-選択の単位元(Φ ∪ L = L)として使う。
+何も受理しない(空集合Φの)NFA。
+開始状態と受理状態を別々にし、間に一切遷移を作らないことで表現する。
+choiceNFA(N項の選択)の空リストの場合に、選択の単位元(Φ ∪ L = L)として使う。
 
 >>> (_, n) = runFresh noneNFA (newEnv ["", "a"])
 >>> lang n
@@ -251,14 +251,13 @@ noneNFA = do
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
 Nr1r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1])]),(q1,[(ε,[p2])]),(q2,[(ε,[q])])}, p, [q])を作る。
-新規状態 p, q は Env から採番する。2項の連接なので `(++)` に倣って
-appendNFA という名前にしている(N個まとめて連接するのは concatNFA、`concat` 相当)。
+新規状態 p, q は Env から採番する。
+2項の連接なので `(++)` に倣って appendNFA という名前にしている(N個まとめて連接するのは concatNFA、`concat` 相当)。
 
 na, nb は同じΣ(ここでは ["a","b"])を共有する NFA として作る
 (`alphabet` は `runFresh` に渡した1つのΣを指すので、必ず揃う)。
 連接した nab もこのΣを引き継ぐので、"ab" のような複数文字の文字列はもはやΣの要素ではない(Σは1記号ずつの集合)。
-そのため lang ではなく、任意の文字列を直接判定できる
-accepts で L(Nr1r2) = L(Nr1)L(Nr2)(AB = [xy | x <- A, y <- B])を確認する:
+そのため lang ではなく、任意の文字列を直接判定できる accepts で L(Nr1r2) = L(Nr1)L(Nr2)(AB = [xy | x <- A, y <- B])を確認する:
 
 >>> :{
 let (_, ok) = runFresh (do { na <- char 'a'
@@ -288,7 +287,8 @@ appendNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) = do
 appendNFA _ _ = error "appendNFA: f must be a singleton list"
 
 {-|
-NFA のリストを1つに連接する。`concat = foldr (++) []` に倣い、appendNFA を畳み込んで作る。
+NFA のリストを1つに連接する。
+`concat = foldr (++) []` に倣い、appendNFA を畳み込んで作る。
 空リストは連接の単位元である emptyNFA(εだけを受理)になる。
 
 na, nb, nc は同じΣ(["a","b","c"])を共有する NFA として作る。
@@ -346,8 +346,8 @@ alterNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) = do
 alterNFA _ _ = error "alterNFA: f must be a singleton list"
 
 {-|
-NFA のリストを1つの選択にまとめる。空リストは選択の単位元である
-「何も受理しない NFA」(noneNFA)になる。
+NFA のリストを1つの選択にまとめる。
+空リストは選択の単位元である「何も受理しない NFA」(noneNFA)になる。
 
 L(Nr1|r2|...|rn) = L(Nr1) ∪ L(Nr2) ∪ ... ∪ L(Nrn) の確認:
 
@@ -370,12 +370,13 @@ choiceNFA (n:nfas) = foldM alterNFA n nfas
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]) から
 Nr1* = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1,q])]),(q1,[(ε,[p1,q])])}, p, [q])
-を作る。新規状態 p, q は Env から採番する。
+を作る。
+新規状態 p, q は Env から採番する。
 
-na, nStar も同じΣ(["a"])を共有する。閉包が作る文字列は長さが揃わないので、
+na, nStar も同じΣ(["a"])を共有する。
+閉包が作る文字列は長さが揃わないので、
 appendNFA/concatNFA と同じ理由で lang ではなく accepts を使い、
-L(Nr1*) = L(Nr1)* = {""} ∪ L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ... を確認する
-("","a","aa","aaa" の4段だけ):
+L(Nr1*) = L(Nr1)* = {""} ∪ L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ... を確認する("","a","aa","aaa" の4段だけ):
 
 >>> :{
 let (_, ok) = runFresh (do { na <- char 'a'
@@ -490,11 +491,9 @@ minimizeDFA はそれを素朴な分割再帰法(Moore法)でまとめ、最小�
 やり方:
 
 1. 最終状態と非最終状態の2ブロックに分ける(これ以上は絶対に混ざれない)。
-2. 各ブロックについて、記号ごとの遷移先が属するブロックが状態同士で
-   食い違っていたら、そのブロックを割る。
+2. 各ブロックについて、記号ごとの遷移先が属するブロックが状態同士で食い違っていたら、そのブロックを割る。
 3. 分割が変化しなくなるまで2を繰り返す。
-4. 安定したブロック1つを新しい1状態とみなして DFA を組み直す
-   (各ブロックの代表元として最小の State を採用する)。
+4. 安定したブロック1つを新しい1状態とみなして DFA を組み直す(各ブロックの代表元として最小の State を採用する)。
 
 >>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4])), (3, (epsilon, [5])), (4, (epsilon, [5]))]
 >>> nfa = NFA [0..5] ["a","b"] d 0 [5]
@@ -550,8 +549,7 @@ minimizeDFA (DFA qs ws d q0 fs)
 {-|
 DFA d に文字列 w を実際に食わせて受理するか判定する。
 1文字ずつ delta を辿り、最後にいる状態が f に含まれるかを見るだけ。
-遷移が見つからない場合(trap 状態への遷移や、アルファベットに無い文字を読んだ場合)は
-空の State に落として拒否として扱う。
+遷移が見つからない場合(trap 状態への遷移や、アルファベットに無い文字を読んだ場合)は空の State に落として拒否として扱う。
 
 
 - [a-c] : charsets で作った文字集合例
