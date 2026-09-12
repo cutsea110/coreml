@@ -480,6 +480,10 @@ toDFA nfa@(NFA _ ws d q0 fs)
         (qs', d') = subsets nfa ([a], [], [])
         fs'       = [ a' | a' <- qs', fs `hasAnyOf` a' ]
 
+
+toDFA' :: NFA -> DFA
+toDFA' = minimizeDFA . toDFA
+
 type Block     = [State]
 type Partition = [Block]
 
@@ -555,7 +559,7 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。
 - [a-c] : charsets で作った文字集合例
 
 >>> (_, nfa) = runFresh (charsets "abc") (newEnv ["a","b","c"])
->>> dfa = minimizeDFA (toDFA nfa)
+>>> dfa = toDFA' nfa
 >>> runDFA dfa "a"
 True
 >>> runDFA dfa "b"
@@ -581,7 +585,7 @@ let (_, nstar) = runFresh (do { nabc <- charsets "abc"
                               }) (newEnv abcAlphabet)
 :}
 
->>> starDfa = minimizeDFA (toDFA nstar)
+>>> starDfa = toDFA' nstar
 >>> runDFA starDfa ""
 True
 >>> runDFA starDfa "a"
@@ -612,7 +616,7 @@ let (e4, nabcSeq) = runFresh (do { na <- char 'a'
                                  }) (newEnv abcAlphabet)
 :}
 
->>> abcDfa = minimizeDFA (toDFA nabcSeq)
+>>> abcDfa = toDFA' nabcSeq
 >>> runDFA abcDfa "a"
 False
 >>> runDFA abcDfa "b"
@@ -634,7 +638,7 @@ True
 - (abc)* : 上の nabcSeq に closureNFA をかぶせるだけの例(e4 は既にΣを含んでいるので渡し直す必要はない)
 
 >>> (_, nabcStar) = runFresh (closureNFA nabcSeq) e4
->>> abcStarDfa = minimizeDFA (toDFA nabcStar)
+>>> abcStarDfa = toDFA' nabcStar
 >>> runDFA abcStarDfa ""
 True
 >>> runDFA abcStarDfa "abc"
@@ -670,7 +674,7 @@ let (_, nNum) = runFresh (do { nDash <- char '-'
                              }) (newEnv numAlphabet)
 :}
 
->>> numDfa = minimizeDFA (toDFA nNum)
+>>> numDfa = toDFA' nNum
 >>> runDFA numDfa "123"
 True
 >>> runDFA numDfa "-123"
