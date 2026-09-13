@@ -556,9 +556,9 @@ DFA d に文字列 w を実際に食わせて受理するか判定する。
 遷移が見つからない場合(trap 状態への遷移や、アルファベットに無い文字を読んだ場合)は空の State に落として拒否として扱う。
 
 
-- [a-c] : charsets で作った文字集合例
+- [a-c] : charset で作った文字集合例
 
->>> (_, nfa) = runFresh (charsets "abc") (newEnv ["a","b","c"])
+>>> (_, nfa) = runFresh (charset "abc") (newEnv ["a","b","c"])
 >>> dfa = toDFA' nfa
 >>> runDFA dfa "a"
 True
@@ -576,11 +576,11 @@ False
 False
 
 
-- [a-c]* : charsets と closureNFA を do 記法でつなぐ例
+- [a-c]* : charset と closureNFA を do 記法でつなぐ例
 
 >>> abcAlphabet = ["a","b","c"]
 >>> :{
-let (_, nstar) = runFresh (do { nabc <- charsets "abc"
+let (_, nstar) = runFresh (do { nabc <- charset "abc"
                               ; closureNFA nabc
                               }) (newEnv abcAlphabet)
 :}
@@ -657,7 +657,7 @@ False
 False
 
 
-- (-?)[0-9]+ : emptyNFA で「-の省略」を、charsets を2回使って「最初の1桁」と「0回以上の繰り返し」を分けて組み立て、
+- (-?)[0-9]+ : emptyNFA で「-の省略」を、charset を2回使って「最初の1桁」と「0回以上の繰り返し」を分けて組み立て、
   最後に concatNFA(N項版)で「省略可能な-」「最初の1桁」「0回以上の繰り返し」の3つを一度に連接する、まとめて1つの do 記法で書く例
 
 >>> digits = ['0'..'9']
@@ -667,8 +667,8 @@ False
 let (_, nNum) = runFresh (do { nDash <- char '-'
                              ; nEps <- emptyNFA
                              ; nOptDash <- alterNFA nDash nEps
-                             ; nDigits1 <- charsets digits
-                             ; nDigits2 <- charsets digits
+                             ; nDigits1 <- charset digits
+                             ; nDigits2 <- charset digits
                              ; nDigitsStar <- closureNFA nDigits2
                              ; concatNFA [nOptDash, nDigits1, nDigitsStar]
                              }) (newEnv numAlphabet)
@@ -721,7 +721,7 @@ getNext (Env n ws) = (n, Env (n + 1) ws)
 
 {-|
 Env(採番用のカウンタとΣ)を持ち回る小さな状態モナド。
-`char`/`charsets`/`appendNFA`/... は全て「同じΣの上で新しい状態番号を必要なだけ採番しながら NFA を組み立てる」計算なので、
+`char`/`charset`/`appendNFA`/... は全て「同じΣの上で新しい状態番号を必要なだけ採番しながら NFA を組み立てる」計算なので、
 Env を明示的な引数として毎回受け渡す代わりにこの型でラップし、`do` 記法で書けるようにする。
 
 >>> runFresh (pure 'x') (newEnv ["a","b"])
@@ -775,20 +775,20 @@ char c = do
 {-|
 [a-zA-Z] のような文字集合を1つの NFA にする。
 Σは自分の文字だけから決めるのではなく `alphabet` を使う
-(`charsets "abc"` を他の部分と組み合わせて使う正規表現全体のΣは "abc" だけとは限らないため)。
+(`charset "abc"` を他の部分と組み合わせて使う正規表現全体のΣは "abc" だけとは限らないため)。
 
 `alterNFA` を鎖状に繰り返し畳み込むと文字数に比例した長さのε遷移の鎖ができてしまい、
 `epsilonCl` の不動点計算がその鎖を1ホップずつしか進められないため文字数が増えると急激に遅くなる。
 そこで新しい開始状態1つから各文字の NFA へε分岐、各文字の NFA の受理状態から新しい受理状態1つへε収束、
 という1段の fan-out/fan-in で組み立てる。
 
->>> (_, NFA nq _ nd nq0 nf) = runFresh (charsets "abc") (newEnv ["a","b","c"])
+>>> (_, NFA nq _ nd nq0 nf) = runFresh (charset "abc") (newEnv ["a","b","c"])
 >>> lang (NFA nq ["a","b","c","d","","ab","ac"] nd nq0 nf)
 ["a","b","c"]
 -}
-charsets :: [Char] -> Fresh NFA
-charsets []  = error "charsets: empty charsets"
-charsets cs = do
+charset :: [Char] -> Fresh NFA
+charset []  = error "charset: empty charset"
+charset cs = do
   ws <- alphabet
   nfas <- mapM char cs
   p  <- fresh
