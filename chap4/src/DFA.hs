@@ -412,6 +412,53 @@ closureNFA (NFA qs1 _ d1 p1 [fq1]) = do
            }
 closureNFA _ = error "closureNFA: f must be a singleton list"
 
+{-|
+Nr1 = (Q1,Σ,δ1,p1,[q1]) から
+Nr1+ = (Q1++{p,q}, Σ, δ1++{(p,[(ε,[p1])]),(q1,[(ε,[p1,q])])}, p, [q])
+を作る。
+closureNFA(r1*)との違いは開始状態pからqへ直接抜けるε辺を持たない点だけで、
+そのため空文字列は受理されず、少なくとも1回はr1を読む必要がある(r1+ = r1r1*)。
+closureNFAのように新規状態p,qだけを追加し、r1のNFAを1つだけ使い回すので、
+appendNFA (charset cs) (closureNFA (charset cs)) のようにcharsetを2回呼んで
+NFAの状態数を倍加させるより軽い。
+
+na, nPlus も同じΣ(["a"])を共有する。
+appendNFA/concatNFA/closureNFAと同じ理由でlangではなくacceptsを使い、
+L(Nr1+) = L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ...(空文字列を含まない)を確認する("a","aa","aaa"の3段だけ、""は含まれない):
+
+>>> :{
+let (_, ok) = runFresh (do { na <- char 'a'
+                           ; nPlus <- plusNFA na
+                           ; let predicted = lang na ++
+                                    [ x++y
+                                    | x <- lang na
+                                    , y <- lang na] ++
+                                    [ x++y++z
+                                    | x <- lang na
+                                    , y <- lang na
+                                    , z <- lang na]
+                           ; pure (all (accepts nPlus) predicted && not (accepts nPlus ""))
+                           }) (newEnv ["a"])
+:}
+
+>>> ok
+True
+-}
+plusNFA :: NFA -> Fresh NFA
+plusNFA (NFA qs1 _ d1 p1 [fq1]) = do
+  ws <- alphabet
+  p  <- fresh
+  qf <- fresh
+  pure NFA { q     = qs1 ++ [p, qf]
+           , s     = ws
+           , delta = d1 ++ [ (p,   (epsilon, [p1]))
+                           , (fq1, (epsilon, [p1,qf]))
+                           ]
+           , q0    = p
+           , f     = [qf]
+           }
+plusNFA _ = error "plusNFA: f must be a singleton list"
+
 deltaDFA :: Delta -> (State, S) -> State
 deltaDFA d (ps, a) = flatten [delta' d (p, a) | p <- ps]
 
