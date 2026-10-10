@@ -257,8 +257,6 @@ na, nb は同じΣ(ここでは ["a","b"])を共有する NFA として作る
 連接した nab もこのΣを引き継ぐので、"ab" のような複数文字の文字列はもはやΣの要素ではない(Σは1記号ずつの集合)。
 そのため lang ではなく、任意の文字列を直接判定できる accepts で L(Nr1r2) = L(Nr1)L(Nr2)(AB = [xy | x <- A, y <- B])を確認する:
 
-- 連接: L(Nr1r2) = L(Nr1)L(Nr2) の確認
-
 >>> :{
 let (_, ok) = runFresh (do { na <- char 'a'
                            ; nb <- char 'b'
@@ -317,8 +315,7 @@ Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
 Nr1|r2 = (Q1++Q2++{p,q}, Σ, δ1++δ2++{(p,[(ε,[p1,p2])]),(q1,[(ε,[q])]),(q2,[(ε,[q])])}, p, [q]) を作る。
 新規状態 p, q は Env から採番する。
 2項の選択なので alterNFA という名前にしている(N個まとめて選択するのは choiceNFA)。
-
-- 選択: L(Nr1|r2) = L(Nr1) ∪ L(Nr2) の確認:
+accepts で L(Nr1|r2) = L(Nr1) ∪ L(Nr2) を確認する:
 
 >>> :{
 let (_, ok) = runFresh (do { na <- char 'a'
@@ -354,8 +351,7 @@ alterNFA _ _ = error "alterNFA: f must be a singleton list"
 {-|
 NFA のリストを1つの選択にまとめる。
 空リストは選択の単位元である「何も受理しない NFA」(noneNFA)になる。
-
-- 選択: L(Nr1|r2|...|rn) = L(Nr1) ∪ L(Nr2) ∪ ... ∪ L(Nrn) の確認:
+accepts で L(Nr1|r2|...|rn) = L(Nr1) ∪ L(Nr2) ∪ ... ∪ L(Nrn) を確認する:
 
 >>> :{
 let (_, ok) = runFresh (do { na <- char 'a'
@@ -383,8 +379,6 @@ na, nStar も同じΣ(["a"])を共有する。
 閉包が作る文字列は長さが揃わないので、
 appendNFA/concatNFA と同じ理由で lang ではなく accepts を使い、
 L(Nr1*) = L(Nr1)* = {""} ∪ L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ... を確認する("","a","aa","aaa" の4段だけ):
-
-- 閉包: L(Nr1*) = L(Nr1)* = {""} ∪ L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ... の確認:
 
 >>> :{
 let (_, ok) = runFresh (do { na <- char 'a'
@@ -436,8 +430,6 @@ NFAの状態数を倍加させるより軽い。
 na, nPlus も同じΣ(["a"])を共有する。
 appendNFA/concatNFA/closureNFAと同じ理由でlangではなくacceptsを使い、
 L(Nr1+) = L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ...(空文字列を含まない)を確認する("a","aa","aaa"の3段だけ、""は含まれない):
-
-- 閉包+: L(Nr1+) = L(Nr1) ∪ L(Nr1)L(Nr1) ∪ L(Nr1)L(Nr1)L(Nr1) ∪ ... の確認:
 
 >>> :{
 let (_, ok) = runFresh (do { na <- char 'a'
