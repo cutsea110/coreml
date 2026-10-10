@@ -63,13 +63,11 @@ data DFA = DFA { q     :: [State]
 [4,5]
 -}
 epsilonCl :: Delta -> State -> State
-epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
-  where epsilonTransition p = go [p]
-          where
-            go qs
-              | qs == qs' = qs
-              | otherwise = go qs'
-              where qs' = flatten $ qs:[q' | q <- qs, q' <- transitions d (q, epsilon)]
+epsilonCl d = go []
+  where go seen [] = reverse seen
+        go seen (p:ps)
+          | p `elem` seen = go seen ps
+          | otherwise     = go (p:seen) (concat (transitions d (p, epsilon)) ++ ps)
 
 {-|
 
