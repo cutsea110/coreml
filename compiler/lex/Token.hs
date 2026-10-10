@@ -49,4 +49,6 @@ data Token = EOF
            deriving (Show, Eq)
 
 toString :: Token -> String
-toString = show
+toString t = case t of
+  ID s -> "ID " ++ s
+  _    -> show t
