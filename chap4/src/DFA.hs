@@ -23,7 +23,7 @@ epsilon = ""
 
 type Q = Int
 
-type Delta = [(Q, (S, [Q]))]
+type Delta = [(Q, [(S, [Q])])]
 
 data NFA = NFA { q     :: [Q]
                , s     :: [S]
@@ -44,13 +44,13 @@ data DFA = DFA { q     :: [State]
                } deriving (Show, Eq)
 
 {-|
->>> d = [(0, (epsilon, [1])), (1, ("a", [1])), (1, ("b", [2])), (2, ("a", [2]))]
+>>> d = [(0, [(epsilon, [1])]), (1, [("a", [1]), ("b", [2])]), (2, [("a", [2])])]
 >>> epsilonCl d [0]
 [0,1]
->>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, (epsilon, [4]))]
+>>> d = [(0, [(epsilon, [1,2])]), (1, [("a", [3])]), (2, [(epsilon, [4])])]
 >>> epsilonCl d [0]
 [0,1,2,4]
->>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4])), (3, (epsilon, [5])), (4, (epsilon, [5]))]
+>>> d = [(0, [(epsilon, [1,2])]), (1, [("a", [3])]), (2, [("b", [4])]), (3, [(epsilon, [5])]), (4, [(epsilon, [5])])]
 >>> epsilonCl d [0]
 [0,1,2]
 >>> epsilonCl d [1]
@@ -75,13 +75,13 @@ epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
 
 - 単純なケース
 
->>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4]))]
+>>> d = [(0, [(epsilon, [1,2])]), (1, [("a", [3])]), (2, [("b", [4])])]
 >>> delta' d (0, "a")
 [3]
 >>> delta' d (0, "b")
 [4]
 
->>> d = [(0, ("a", [1])), (1, ("b", [2])), (2, ("a", [3])), (3, ("b", [4]))]
+>>> d = [(0, [("a", [1])]), (1, [("b", [2])]), (2, [("a", [3])]), (3, [("b", [4])])]
 >>> delta' d (0, "a")
 [1]
 >>> delta' d (0, "ab")
@@ -93,13 +93,13 @@ epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
 
 - 連接
 
->>> d = [(0, (epsilon, [1])), (1, ("a", [2])), (2, (epsilon, [3])), (3, ("b", [4])), (4, (epsilon, [5]))]
+>>> d = [(0, [(epsilon, [1])]), (1, [("a", [2])]), (2, [(epsilon, [3])]), (3, [("b", [4])]), (4, [(epsilon, [5])])]
 >>> delta' d (0, "ab")
 [4,5]
 
 - 連接 (r1r2)
 
->>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4])), (3, ("b", [5])), (4, ("a", [5]))]
+>>> d = [(0, [(epsilon, [1,2])]), (1, [("a", [3])]), (2, [("b", [4])]), (3, [("b", [5])]), (4, [("a", [5])])]
 >>> delta' d (0, "ab")
 [5]
 >>> delta' d (0, "ba")
@@ -107,7 +107,7 @@ epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
 
 - 選択 (r1|r2)
 
->>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4])), (3, (epsilon, [5])), (4, (epsilon, [5]))]
+>>> d = [(0, [(epsilon, [1,2])]), (1, [("a", [3])]), (2, [("b", [4])]), (3, [(epsilon, [5])]), (4, [(epsilon, [5])])]
 >>> delta' d (0, "a")
 [3,5]
 >>> delta' d (0, "b")
@@ -115,7 +115,7 @@ epsilonCl d ps = flatten [epsilonTransition p|p  <- ps]
 
 - 閉包 (r*)
 
->>> d = [(0, (epsilon, [1,3])), (1, ("a", [2])), (2, (epsilon, [3])), (2, (epsilon, [1]))]
+>>> d = [(0, [(epsilon, [1,3])]), (1, [("a", [2])]), (2, [(epsilon, [3,1])])]
 >>> delta' d (0, "a")
 [2,3,1]
 >>> delta' d (0, "aa")
@@ -134,13 +134,13 @@ delta' d (p, wa) = epsilonCl d $ flatten [qs | q <- delta' d (p, w), qs <- trans
 
 
 {-|
->>> d = [(0, ("a", [1])), (1, ("b", [2])), (2, ("c", [3])), (3, ("d", [4]))]
+>>> d = [(0, [("a", [1])]), (1, [("b", [2])]), (2, [("c", [3])]), (3, [("d", [4])])]
 >>> transitions d (0, "a")
 [[1]]
 >>> transitions d (1, "b")
 [[2]]
 
->>> d = [(0, ("a", [1,2])), (1, ("b", [3])), (1, ("c", [4]))]
+>>> d = [(0, [("a", [1,2])]), (1, [("b", [3])]), (1, [("c", [4])])]
 >>> transitions d (0, "a")
 [[1,2]]
 >>> transitions d (1, "b")
@@ -157,7 +157,7 @@ delta' d (p, wa) = epsilonCl d $ flatten [qs | q <- delta' d (p, w), qs <- trans
 []
 -}
 transitions :: Delta -> (Q, S) -> [State]
-transitions d (p, a) = [qs' | (p', (s, qs')) <- d, p' == p && s == a]
+transitions d (p, a) = [qs' | (p', sqs') <- d, (s, qs') <- sqs', p' == p && s == a]
 
 {-|
 - r = 空のとき L(Nr) = []
@@ -168,14 +168,14 @@ transitions d (p, a) = [qs' | (p', (s, qs')) <- d, p' == p && s == a]
 
 - r = a のとき L(Nr) = [a]
 
->>> na = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
+>>> na = NFA [0,1] ["a"] [(0,[("a",[1])])] 0 [1]
 >>> lang na
 ["a"]
 
 - 連接 (r1r2) : L(Nr1r2) = L(Nr1)L(Nr2)、ただし AB = [xy | x <- A, y <- B]
 
->>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
->>> n2 = NFA [2,3] ["b"] [(2,("b",[3]))] 2 [3]
+>>> n1 = NFA [0,1] ["a"] [(0,[("a",[1])])] 0 [1]
+>>> n2 = NFA [2,3] ["b"] [(2,[("b",[3])])] 2 [3]
 >>> lang n1
 ["a"]
 >>> lang n2
@@ -277,9 +277,11 @@ appendNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) = do
   qf <- fresh
   pure NFA { q     = qs1 ++ qs2 ++ [p, qf]
            , s     = ws
-           , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1]))
-                                 , (fq1, (epsilon, [p2]))
-                                 , (fq2, (epsilon, [qf]))
+           -- 構成上キーは重複しない
+           -- fresh な p/qf と遷移を持たない受理状態のみ利用している
+           , delta = d1 ++ d2 ++ [ (p,   [(epsilon, [p1])])
+                                 , (fq1, [(epsilon, [p2])])
+                                 , (fq2, [(epsilon, [qf])])
                                  ]
            , q0    = p
            , f     = [qf]
@@ -336,9 +338,13 @@ alterNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) = do
   qf <- fresh
   pure NFA { q     = qs1 ++ qs2 ++ [p, qf]
            , s     = ws
-           , delta = d1 ++ d2 ++ [ (p,   (epsilon, [p1,p2]))
-                                 , (fq1, (epsilon, [qf]))
-                                 , (fq2, (epsilon, [qf]))
+           -- 構成上キーは重複しない
+           -- p は fresh で fq1/fq2 は別々の部分 NFA の受理状態なので互いに異なる
+           -- いずれも d1/d2 のキーにも出てこないので被らない
+           -- fq1/fq2 から qf へは遷移するが行先が同一なだけでキーは別なので問題ない
+           , delta = d1 ++ d2 ++ [ (p,   [(epsilon, [p1,p2])])
+                                 , (fq1, [(epsilon, [qf])])
+                                 , (fq2, [(epsilon, [qf])])
                                  ]
            , q0    = p
            , f     = [qf]
@@ -404,8 +410,11 @@ closureNFA (NFA qs1 _ d1 p1 [fq1]) = do
   qf <- fresh
   pure NFA { q     = qs1 ++ [p, qf]
            , s     = ws
-           , delta = d1 ++ [ (p,   (epsilon, [p1,qf]))
-                           , (fq1, (epsilon, [p1,qf]))
+           -- 構成上キーは重複しない
+           -- p は fresh で fq1 は d1 のキーには出てこない
+           -- emptyNFA を渡して p1 == fq1 の場合は d1 = [] なので被らない
+           , delta = d1 ++ [ (p,   [(epsilon, [p1,qf])])
+                           , (fq1, [(epsilon, [p1,qf])])
                            ]
            , q0    = p
            , f     = [qf]
@@ -451,8 +460,11 @@ plusNFA (NFA qs1 _ d1 p1 [fq1]) = do
   qf <- fresh
   pure NFA { q     = qs1 ++ [p, qf]
            , s     = ws
-           , delta = d1 ++ [ (p,   (epsilon, [p1]))
-                           , (fq1, (epsilon, [p1,qf]))
+           -- 構成上キーは重複しない
+           -- p は fresh で fq1 は d1 のキーには出てこない
+           -- emptyNFA を渡して p1 == fq1 の場合は d1 = [] なので被らない
+           , delta = d1 ++ [ (p,   [(epsilon, [p1])])
+                           , (fq1, [(epsilon, [p1,qf])])
                            ]
            , q0    = p
            , f     = [qf]
@@ -481,7 +493,7 @@ subsets nfa (a:qs1, qs2, d) = subsets nfa $ addQ nfa a (qs1, qs2, d)
 
 選択 (a|b) : εで分岐し、'a' または 'b' を1文字読んだ先で合流しないケース
 
->>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4])), (3, (epsilon, [5])), (4, (epsilon, [5]))]
+>>> d = [(0, [(epsilon, [1,2])]), (1, [("a", [3])]), (2, [("b", [4])]), (3, [(epsilon, [5])]), (4, [(epsilon, [5])])]
 >>> nfa = NFA [0..5] ["a","b"] d 0 [5]
 >>> toDFA nfa
 DFA {q = [[3,5],[],[4,5],[0,1,2]], s = ["a","b"], delta = [([3,5],[("b",[]),("a",[])]),([],[("b",[]),("a",[])]),([4,5],[("b",[]),("a",[])]),([0,1,2],[("b",[4,5]),("a",[3,5])])], q0 = [0,1,2], f = [[3,5],[4,5]]}
@@ -494,7 +506,7 @@ True
 
 連接 (abab) : εを含まない、鎖状の NFA。各 NFA 状態がそのまま1つの DFA 状態になる
 
->>> d2 = [(0, ("a", [1])), (1, ("b", [2])), (2, ("a", [3])), (3, ("b", [4]))]
+>>> d2 = [(0, [("a", [1])]), (1, [("b", [2])]), (2, [("a", [3])]), (3, [("b", [4])])]
 >>> nfa2 = NFA [0..4] ["a","b"] d2 0 [4]
 >>> toDFA nfa2
 DFA {q = [[4],[3],[2],[1],[],[0]], s = ["a","b"], delta = [([4],[("b",[]),("a",[])]),([3],[("b",[4]),("a",[])]),([2],[("b",[]),("a",[3])]),([1],[("b",[2]),("a",[])]),([],[("b",[]),("a",[])]),([0],[("b",[]),("a",[1])])], q0 = [0], f = [[4]]}
@@ -506,7 +518,7 @@ True
 閉包 (a*) : closureNFA が受理状態から開始状態へεで戻す辺を持つため、NFA 自体が循環パターンになっている。
 その結果 DFA 側の遷移表にも状態 [1,0,3] が "a" を読んで自分自身に戻る自己ループが現れる。
 
->>> n1 = NFA [0,1] ["a"] [(0,("a",[1]))] 0 [1]
+>>> n1 = NFA [0,1] ["a"] [(0,[("a",[1])])] 0 [1]
 >>> (_, nStar) = runFresh (closureNFA n1) (Env 2 ["a"])
 >>> toDFA nStar
 DFA {q = [[1,0,3],[2,0,3]], s = ["a"], delta = [([1,0,3],[("a",[1,0,3])]),([2,0,3],[("a",[1,0,3])])], q0 = [2,0,3], f = [[1,0,3],[2,0,3]]}
@@ -546,7 +558,7 @@ minimizeDFA はそれを素朴な分割再帰法(Moore法)でまとめ、最小�
 3. 分割が変化しなくなるまで2を繰り返す。
 4. 安定したブロック1つを新しい1状態とみなして DFA を組み直す(各ブロックの代表元として最小の State を採用する)。
 
->>> d = [(0, (epsilon, [1,2])), (1, ("a", [3])), (2, ("b", [4])), (3, (epsilon, [5])), (4, (epsilon, [5]))]
+>>> d = [(0, [(epsilon, [1,2])]), (1, [("a", [3])]), (2, [("b", [4])]), (3, [(epsilon, [5])]), (4, [(epsilon, [5])])]
 >>> nfa = NFA [0..5] ["a","b"] d 0 [5]
 >>> dfa = toDFA nfa
 >>> dfa
@@ -817,7 +829,7 @@ char c = do
   ws <- alphabet
   s <- fresh
   e <- fresh
-  pure (NFA [s,e] ws [(s,([c],[e]))] s [e])
+  pure (NFA [s,e] ws [(s,[([c],[e])])] s [e])
 
 {-|
 [a-zA-Z] のような文字集合を1つの NFA にする。
@@ -846,7 +858,9 @@ charset cs = do
       fins   = [ fq  | NFA _   _  _  _  [fq] <- nfas ]
   pure NFA { q     = concat qss ++ [p, qf]
            , s     = ws
-           , delta = concat dss ++ (p, (epsilon, starts)) : [ (fq, (epsilon, [qf])) | fq <- fins ]
+           -- p は fresh で fins は各 char が作った受理状態 e で char ごとに別
+             -- それぞれで fresh で採番されているので互いに異なる
+           , delta = concat dss ++ (p, [(epsilon, starts)]) : [ (fq, [(epsilon, [qf])]) | fq <- fins ]
            , q0    = p
            , f     = [qf]
            }
