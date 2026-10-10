@@ -127,8 +127,8 @@ delta' :: Delta -> (Q, S) -> State
 delta' d (p, "") = epsilonCl d [p]
 delta' d (p, wa) = epsilonCl d $ flatten [qs | q <- delta' d (p, w), qs <- transitions d (q, a)]
   where (w, a) = case unsnoc wa of
-          Nothing -> error "delta': empty string"
           Just (w', a') -> (w', [a'])
+          Nothing       -> error "delta': empty string"
 
 
 {-|
@@ -227,7 +227,7 @@ r? のような「省略可能」を alterNFA と組み合わせて表現する�
 emptyNFA :: Fresh NFA
 emptyNFA = do
   ws <- alphabet
-  p <- fresh
+  p  <- fresh
   pure (NFA [p] ws [] p [p])
 
 {-|
@@ -242,8 +242,8 @@ choiceNFA(N項の選択)の空リストの場合に、選択の単位元(Φ ∪ 
 noneNFA :: Fresh NFA
 noneNFA = do
   ws <- alphabet
-  p <- fresh
-  q <- fresh
+  p  <- fresh
+  q  <- fresh
   pure (NFA [p,q] ws [] p [q])
 
 {-|
@@ -823,9 +823,9 @@ instance Monad Fresh where
 char :: Char -> Fresh NFA
 char c = do
   ws <- alphabet
-  s <- fresh
-  e <- fresh
-  pure (NFA [s,e] ws [(s,[([c],[e])])] s [e])
+  s  <- fresh
+  e  <- fresh
+  pure (NFA [s, e] ws [(s, [([c], [e])])] s [e])
 
 {-|
 [a-zA-Z] のような文字集合を1つの NFA にする。
@@ -844,10 +844,10 @@ char c = do
 charset :: [Char] -> Fresh NFA
 charset []  = error "charset: empty charset"
 charset cs = do
-  ws <- alphabet
+  ws   <- alphabet
   nfas <- mapM char cs
-  p  <- fresh
-  qf <- fresh
+  p    <- fresh
+  qf   <- fresh
   let qss    = [ qsI | NFA qsI _  _  _  _    <- nfas ]
       dss    = [ dI  | NFA _   _  dI _  _    <- nfas ]
       starts = [ p0  | NFA _   _  _  p0 _    <- nfas ]
@@ -855,7 +855,7 @@ charset cs = do
   pure NFA { q     = concat qss ++ [p, qf]
            , s     = ws
            -- p は fresh で fins は各 char が作った受理状態 e で char ごとに別
-             -- それぞれで fresh で採番されているので互いに異なる
+           -- それぞれで fresh で採番されているので互いに異なる
            , delta = concat dss ++ (p, [(epsilon, starts)]) : [ (fq, [(epsilon, [qf])]) | fq <- fins ]
            , q0    = p
            , f     = [qf]
