@@ -3,6 +3,7 @@ module DFA where
 
 import Control.Monad (foldM)
 import Data.List (nub, unsnoc, (\\))
+import Data.Maybe (fromMaybe)
 
 -- ユーティリティ
 flatten :: Eq a => [[a]] -> [a]
@@ -67,7 +68,7 @@ epsilonCl d = go []
   where go seen [] = reverse seen
         go seen (p:ps)
           | p `elem` seen = go seen ps
-          | otherwise     = go (p:seen) (concat (transitions d (p, epsilon)) ++ ps)
+          | otherwise     = go (p:seen) (transitions d (p, epsilon) ++ ps)
 
 {-|
 
@@ -125,7 +126,7 @@ epsilonCl d = go []
 -}
 delta' :: Delta -> (Q, S) -> State
 delta' d (p, "") = epsilonCl d [p]
-delta' d (p, wa) = epsilonCl d $ flatten [qs | q <- delta' d (p, w), qs <- transitions d (q, a)]
+delta' d (p, wa) = epsilonCl d $ flatten [transitions d (q, a) | q <- delta' d (p, w)]
   where (w, a) = case unsnoc wa of
           Just (w', a') -> (w', [a'])
           Nothing       -> error "delta': empty string"
@@ -154,8 +155,8 @@ delta' d (p, wa) = epsilonCl d $ flatten [qs | q <- delta' d (p, w), qs <- trans
 >>> transitions d (4, epsilon)
 []
 -}
-transitions :: Delta -> (Q, S) -> [State]
-transitions d (p, a) = [qs' | (p', sqs') <- d, (s, qs') <- sqs', p' == p && s == a]
+transitions :: Delta -> (Q, S) -> State
+transitions d (p, a) = fromMaybe [] (lookup p d >>= lookup a)
 
 {-|
 - r = 空のとき L(Nr) = []
