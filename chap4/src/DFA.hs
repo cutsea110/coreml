@@ -156,7 +156,7 @@ delta' d (p, wa) = epsilonCl d $ flatten [transitions d (q, a) | q <- delta' d (
 []
 -}
 transitions :: Delta -> (Q, S) -> State
-transitions d (p, a) = fromMaybe [] (lookup p d >>= lookup a)
+transitions d (p, a) = fromMaybe [] (lookup a =<< lookup p d)
 
 {-|
 - r = 空のとき L(Nr) = []
