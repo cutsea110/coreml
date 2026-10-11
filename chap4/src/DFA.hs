@@ -135,17 +135,17 @@ delta' d (p, wa) = epsilonCl d $ flatten [transitions d (q, a) | q <- delta' d (
 {-|
 >>> d = [(0, [("a", [1])]), (1, [("b", [2])]), (2, [("c", [3])]), (3, [("d", [4])])]
 >>> transitions d (0, "a")
-[[1]]
+[1]
 >>> transitions d (1, "b")
-[[2]]
+[2]
 
->>> d = [(0, [("a", [1,2])]), (1, [("b", [3])]), (1, [("c", [4])])]
+>>> d = [(0, [("a", [1,2])]), (1, [("b", [3]), ("c", [4])])]
 >>> transitions d (0, "a")
-[[1,2]]
+[1,2]
 >>> transitions d (1, "b")
-[[3]]
+[3]
 >>> transitions d (1, "c")
-[[4]]
+[4]
 >>> transitions d (3, "a")
 []
 >>> transitions d (4, "b")
