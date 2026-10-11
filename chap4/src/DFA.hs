@@ -244,7 +244,7 @@ noneNFA = do
   ws <- alphabet
   p  <- fresh
   q  <- fresh
-  pure (NFA [p,q] ws [] p [q])
+  pure (NFA [p, q] ws [] p [q])
 
 {-|
 Nr1 = (Q1,Σ,δ1,p1,[q1]), Nr2 = (Q2,Σ,δ2,p2,[q2]) から
@@ -341,7 +341,7 @@ alterNFA (NFA qs1 _ d1 p1 [fq1]) (NFA qs2 _ d2 p2 [fq2]) = do
            -- p は fresh で fq1/fq2 は別々の部分 NFA の受理状態なので互いに異なる
            -- いずれも d1/d2 のキーにも出てこないので被らない
            -- fq1/fq2 から qf へは遷移するが行先が同一なだけでキーは別なので問題ない
-           , delta = d1 ++ d2 ++ [ (p,   [(epsilon, [p1,p2])])
+           , delta = d1 ++ d2 ++ [ (p,   [(epsilon, [p1, p2])])
                                  , (fq1, [(epsilon, [qf])])
                                  , (fq2, [(epsilon, [qf])])
                                  ]
@@ -411,8 +411,8 @@ closureNFA (NFA qs1 _ d1 p1 [fq1]) = do
            -- 構成上キーは重複しない
            -- p は fresh で fq1 は d1 のキーには出てこない
            -- emptyNFA を渡して p1 == fq1 の場合は d1 = [] なので被らない
-           , delta = d1 ++ [ (p,   [(epsilon, [p1,qf])])
-                           , (fq1, [(epsilon, [p1,qf])])
+           , delta = d1 ++ [ (p,   [(epsilon, [p1, qf])])
+                           , (fq1, [(epsilon, [p1, qf])])
                            ]
            , q0    = p
            , f     = [qf]
@@ -462,7 +462,7 @@ plusNFA (NFA qs1 _ d1 p1 [fq1]) = do
            -- p は fresh で fq1 は d1 のキーには出てこない
            -- emptyNFA を渡して p1 == fq1 の場合は d1 = [] なので被らない
            , delta = d1 ++ [ (p,   [(epsilon, [p1])])
-                           , (fq1, [(epsilon, [p1,qf])])
+                           , (fq1, [(epsilon, [p1, qf])])
                            ]
            , q0    = p
            , f     = [qf]
