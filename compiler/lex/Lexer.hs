@@ -220,11 +220,11 @@ string = do
 >>> _runTest lexer "   "
 [(EOF,[])]
 >>> _runTest lexer "abc"
-[(ID "abc",[])]
+[(ID abc,[])]
 >>> _runTest lexer "  abc"
-[(ID "abc",[])]
+[(ID abc,[])]
 >>> _runTest lexer "\tabc"
-[(ID "abc",[])]
+[(ID abc,[])]
 >>> _runTest lexer "\t \n\"Hello, World!\""
 [(STRING "Hello, World!",[])]
 >>> _runTest lexer "3.14"
@@ -362,7 +362,7 @@ lexer = do
         (WHILE <$ pLit "while") `pAltL`
         (REAL . read <$> real) `pAltL`
         (INT . read <$> int) `pAltL`
-        (ID <$> ident) `pAltL`
+        (ID . Name <$> ident) `pAltL`
         (SPECIAL <$> pSat (const True))
 
 {-|
@@ -373,7 +373,7 @@ IORef so the handle's contents are consumed one token at a time.
 >>> h <- _stringHandle "abc 6.02e23 \"hi\""
 >>> next <- makeLexer h
 >>> next
-ID "abc"
+ID abc
 >>> next
 REAL 6.02e23
 >>> next

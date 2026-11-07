@@ -5,7 +5,7 @@ module Top
 
 import System.IO (IOMode(ReadMode), hClose, openFile, stdin)
 import Lexer (makeLexer)
-import Token (Token(..), toString)
+import Token (Token(..))
 
 readAndPrintLoop :: IO Token.Token -> IO ()
 readAndPrintLoop lexer = do
@@ -13,7 +13,7 @@ readAndPrintLoop lexer = do
   case tok of
     Token.EOF -> return ()
     _ -> do
-      putStrLn (Token.toString tok)
+      print tok
       readAndPrintLoop lexer
 
 top :: FilePath -> IO ()

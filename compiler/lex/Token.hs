@@ -2,8 +2,15 @@ module Token where
 
 import Prelude hiding (Ordering(..))
 
+-- | Identifier name. Its 'Show' instance prints the raw string without
+-- quotes, so that the derived 'Show' for 'Token' renders @ID abc@.
+newtype Name = Name String deriving Eq
+
+instance Show Name where
+  showsPrec _ (Name s) = showString s
+
 data Token = EOF
-           | ID String
+           | ID Name
            | STRING String
            | REAL Double
            | INT Int
@@ -47,8 +54,3 @@ data Token = EOF
            | VERTICALBAR          -- ^ |
            | SPECIAL Char
            deriving (Show, Eq)
-
-toString :: Token -> String
-toString t = case t of
-  ID s -> "ID " ++ s
-  _    -> show t
