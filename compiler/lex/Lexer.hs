@@ -106,18 +106,18 @@ frac = do
   return ('.':ds)
 
 {-|
->>> _runTest sign "-123"
+>>> _runTest sign "~123"
 [("-",[(1,'1'),(2,'2'),(3,'3')])]
 >>> _runTest sign "123"
 [("",[(0,'1'),(1,'2'),(2,'3')])]
 -}
 sign :: Parser String
-sign = pLit "-" `pAltL` pEmpty ""
+sign = (const "-" <$> pLit "~") `pAltL` pEmpty ""
 
 {-|
->>> _runTest exp "e-10"
+>>> _runTest exp "e~10"
 [("e-10",[])]
->>> _runTest exp "E-5"
+>>> _runTest exp "E~5"
 [("e-5",[])]
 >>> _runTest exp "e7"
 [("e7",[])]
@@ -138,7 +138,7 @@ exp = do
 {-|
 >>> _runTest int "42"
 [("42",[])]
->>> _runTest int "-1"
+>>> _runTest int "~1"
 [("-1",[])]
 >>> _runTest int "+3"
 []
@@ -150,13 +150,13 @@ int = do
   return (sg ++ n)
 
 {-|
->>> _runTest real "-123.45e-6"
+>>> _runTest real "~123.45e~6"
 [("-123.45e-6",[])]
 >>> _runTest real "3.14"
 [("3.14",[])]
 >>> _runTest real "2e10"
 [("2e10",[])]
->>> _runTest real "2e-10"
+>>> _runTest real "2e~10"
 [("2e-10",[])]
 >>> _runTest real "2E2"
 [("2e2",[])]
@@ -231,7 +231,7 @@ string = do
 [(REAL 3.14,[])]
 >>> _runTest lexer "2e10"
 [(REAL 2.0e10,[])]
->>> _runTest lexer "2e-10"
+>>> _runTest lexer "2e~10"
 [(REAL 2.0e-10,[])]
 >>> _runTest lexer "42"
 [(INT 42,[])]
