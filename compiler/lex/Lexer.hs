@@ -292,9 +292,9 @@ string = do
 >>> _runTest lexer ","
 [(COMMA,[])]
 >>> _runTest lexer "."
-[(PERIOD,[])]
+[(DOT,[])]
 >>> _runTest lexer "..."
-[(TRIPLEDOT,[])]
+[(TRIPLEDOTS,[])]
 >>> _runTest lexer ":"
 [(COLON,[])]
 >>> _runTest lexer ";"
@@ -323,8 +323,8 @@ lexer = do
     f = (EOF <$ pEof) `pAltL`
         (STRING <$> string) `pAltL`
         (COMMA <$ pChar ',') `pAltL`
-        (TRIPLEDOT <$ pLit "...") `pAltL`
-        (PERIOD <$ pChar '.') `pAltL`
+        (TRIPLEDOTS <$ pLit "...") `pAltL`
+        (DOT <$ pChar '.') `pAltL`
         (COLON <$ pChar ':') `pAltL`
         (SEMICOLON <$ pChar ';') `pAltL`
         (ARROW <$ pLit "=>") `pAltL`

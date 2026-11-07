@@ -35,8 +35,8 @@ data Token = EOF
            | VAL                  -- ^ val
            | WHILE                -- ^ while
            | COMMA                -- ^ ,
-           | PERIOD               -- ^ .
-           | TRIPLEDOT            -- ^ ...
+           | DOT                  -- ^ .
+           | TRIPLEDOTS           -- ^ ...
            | COLON                -- ^ :
            | SEMICOLON            -- ^ ;
            | EQ                   -- ^ =
