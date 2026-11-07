@@ -3,8 +3,7 @@ module Lexer where
 import Data.Char (isAlpha, isAlphaNum, isDigit)
 import Data.IORef (newIORef, readIORef, writeIORef)
 import System.Directory (getTemporaryDirectory, removeFile)
-import System.IO (Handle, SeekMode(AbsoluteSeek), hFlush, hGetContents,
-                   hPutStr, hSeek, openTempFile)
+import System.IO (Handle, SeekMode(AbsoluteSeek), hFlush, hGetContents, hPutStr, hSeek, openTempFile)
 
 import Parser
 import Token
@@ -361,6 +360,10 @@ lexer = do
         (SPECIAL <$> pSat (const True))
 
 {-|
+makeLexer takes a file handle and returns a stateful action that yields
+the next Token on each call, threading the remaining Stream through an
+IORef so the handle's contents are consumed one token at a time.
+
 >>> h <- _stringHandle "abc 6.02e23 \"hi\""
 >>> next <- makeLexer h
 >>> next
@@ -374,9 +377,6 @@ EOF
 >>> next
 EOF
 -}
--- | makeLexer takes a file handle and returns a stateful action that yields
--- the next Token on each call, threading the remaining Stream through an
--- IORef so the handle's contents are consumed one token at a time.
 makeLexer :: Handle -> IO (IO Token)
 makeLexer h = do
   ref <- newIORef . toStream =<< hGetContents h
