@@ -22,9 +22,9 @@ buildEmailNFA = do
   concatNFA [local, at, domain, dot, tld]
   where
     alpha = ['a'..'z'] ++ ['A'..'Z']
-    alphaNum = alpha ++ ['0'..'9']
-    localChars  = alphaNum ++ "._%+-"
-    domainChars = alphaNum ++ ".-"
+    alnum = alpha ++ ['0'..'9']
+    localChars  = alnum ++ "._%+-"
+    domainChars = alnum ++ ".-"
 
 emailAlphabet :: [S]
 emailAlphabet = nub [ [c] | c <- chars ]
