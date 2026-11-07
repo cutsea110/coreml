@@ -304,9 +304,9 @@ string = do
 >>> _runTest lexer "=>"
 [(ARROW,[])]
 >>> _runTest lexer "["
-[(LBRACE,[])]
+[(LBRACKET,[])]
 >>> _runTest lexer "]"
-[(RBRACE,[])]
+[(RBRACKET,[])]
 >>> _runTest lexer "_123"
 [(UNDERBAR,[(1,'1'),(2,'2'),(3,'3')])]
 >>> _runTest lexer "|"
@@ -329,8 +329,8 @@ lexer = do
         (SEMICOLON <$ pChar ';') `pAltL`
         (ARROW <$ pLit "=>") `pAltL`
         (EQ <$ pChar '=') `pAltL`
-        (LBRACE <$ pChar '[') `pAltL`
-        (RBRACE <$ pChar ']') `pAltL`
+        (LBRACKET <$ pChar '[') `pAltL`
+        (RBRACKET <$ pChar ']') `pAltL`
         (UNDERBAR <$ pChar '_') `pAltL`
         (VERTICALBAR <$ pChar '|') `pAltL`
         (ANDALSO <$ pLit "andalso") `pAltL`

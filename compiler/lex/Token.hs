@@ -41,8 +41,8 @@ data Token = EOF
            | SEMICOLON            -- ^ ;
            | EQ                   -- ^ =
            | ARROW                -- ^ =>
-           | LBRACE               -- ^ [
-           | RBRACE               -- ^ ]
+           | LBRACKET             -- ^ [
+           | RBRACKET             -- ^ ]
            | UNDERBAR             -- ^ _
            | VERTICALBAR          -- ^ |
            | SPECIAL Char
