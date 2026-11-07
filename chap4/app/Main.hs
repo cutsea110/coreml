@@ -18,12 +18,13 @@ buildEmailNFA = do
   at     <- char '@'
   domain <- charset domainChars >>= plusNFA
   dot    <- char '.'
-  tld    <- charset tldChars    >>= plusNFA
+  tld    <- charset alpha       >>= plusNFA
   concatNFA [local, at, domain, dot, tld]
   where
-    localChars  = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ "._%+-"
-    domainChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ".-"
-    tldChars    = ['a'..'z'] ++ ['A'..'Z']
+    alpha = ['a'..'z'] ++ ['A'..'Z']
+    alphaNum = alpha ++ ['0'..'9']
+    localChars  = alphaNum ++ "._%+-"
+    domainChars = alphaNum ++ ".-"
 
 emailAlphabet :: [S]
 emailAlphabet = nub [ [c] | c <- chars ]
