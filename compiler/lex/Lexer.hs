@@ -156,6 +156,12 @@ int = do
 [("3.14",[])]
 >>> _runTest real "2e10"
 [("2e10",[])]
+>>> _runTest real "2e-10"
+[("2e-10",[])]
+>>> _runTest real "2E2"
+[("2e2",[])]
+>>> _runTest real "3.14E+2"
+[("3.14",[(4,'E'),(5,'+'),(6,'2')])]
 -}
 real :: Parser String
 real = do
